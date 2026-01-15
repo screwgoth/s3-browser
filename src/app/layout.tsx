@@ -4,6 +4,8 @@ import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import { BucketProvider } from '@/context/BucketContext';
 import { UserProvider } from '@/context/UserContext';
+import fs from 'fs';
+import path from 'path';
 
 export const metadata: Metadata = {
   title: 'S3 Navigator',
@@ -15,6 +17,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const version = fs.readFileSync(path.join(process.cwd(), 'VERSION'), 'utf8').trim();
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -31,6 +34,9 @@ export default function RootLayout({
           </AuthProvider>
         </UserProvider>
         <Toaster />
+        <div style={{ position: 'fixed', bottom: '10px', right: '10px', color: 'gray', fontSize: '12px' }}>
+          {version}
+        </div>
       </body>
     </html>
   );

@@ -24,6 +24,7 @@ const formSchema = z.object({
   secretAccessKey: z.string().optional(),
   region: z.string().min(1, { message: "Region is required." }),
   bucket: z.string().min(1, { message: "Bucket name is required." }),
+  folder: z.string().optional(),
 });
 
 export type S3Config = Omit<Bucket, 'id' | 'status'>;
@@ -47,14 +48,15 @@ export function CredentialsForm({ onSave, onCancel, initialData, isEditing = fal
       secretAccessKey: "",
       region: "",
       bucket: "",
+      folder: "",
     },
   });
 
   function onSubmit(values: S3Config) {
     onSave(values);
     toast({
-        title: isEditing ? "Bucket Updated" : "Bucket Added",
-        description: `Successfully saved "${values.name}".`,
+      title: isEditing ? "Bucket Updated" : "Bucket Added",
+      description: `Successfully saved "${values.name}".`,
     });
   }
 
@@ -74,7 +76,7 @@ export function CredentialsForm({ onSave, onCancel, initialData, isEditing = fal
             </FormItem>
           )}
         />
-         <FormField
+        <FormField
           control={form.control}
           name="bucket"
           render={({ field }) => (
@@ -87,7 +89,7 @@ export function CredentialsForm({ onSave, onCancel, initialData, isEditing = fal
             </FormItem>
           )}
         />
-         <FormField
+        <FormField
           control={form.control}
           name="region"
           render={({ field }) => (
@@ -96,6 +98,22 @@ export function CredentialsForm({ onSave, onCancel, initialData, isEditing = fal
               <FormControl>
                 <Input placeholder="us-east-1" {...field} />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="folder"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Root Folder <span className="text-muted-foreground">(optional)</span></FormLabel>
+              <FormControl>
+                <Input placeholder="users/john/" {...field} />
+              </FormControl>
+              <div className="text-xs text-muted-foreground">
+                Limit access to a specific folder. Leave empty for root access.
+              </div>
               <FormMessage />
             </FormItem>
           )}
@@ -143,12 +161,12 @@ export function CredentialsForm({ onSave, onCancel, initialData, isEditing = fal
           )}
         />
         <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onCancel}>
-              Cancel
-            </Button>
-            <Button type="submit">
-              {isEditing ? 'Save Changes' : 'Add Bucket'}
-            </Button>
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button type="submit">
+            {isEditing ? 'Save Changes' : 'Add Bucket'}
+          </Button>
         </div>
       </form>
     </Form>

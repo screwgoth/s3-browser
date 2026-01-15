@@ -2,6 +2,7 @@
 "use client";
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { useAuth } from './AuthContext';
 
 export interface Bucket {
   id: string;
@@ -11,6 +12,8 @@ export interface Bucket {
   accessKeyId?: string;
   secretAccessKey?: string;
   status: 'untested' | 'connected' | 'failed';
+  owner?: string;
+  folder?: string;
 }
 
 interface BucketContextType {
@@ -27,56 +30,96 @@ interface BucketContextType {
 const BucketContext = createContext<BucketContextType | undefined>(undefined);
 
 export function BucketProvider({ children }: { children: React.ReactNode }) {
-  const [buckets, setBuckets] = useState<Bucket[]>([]);
+  const { user } = useAuth();
+  const [allBuckets, setAllBuckets] = useState<Bucket[]>([]);
   const [selectedBucket, setSelectedBucket] = useState<Bucket | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    try {
-        const storedBuckets = localStorage.getItem('s3-buckets');
-        if (storedBuckets) {
-            setBuckets(JSON.parse(storedBuckets));
+    if (typeof window !== 'undefined') {
+      try {
+        // Safe access to localStorage
+        const storage = window.localStorage;
+        if (storage && typeof storage.getItem === 'function') {
+          const storedBuckets = storage.getItem('s3-buckets');
+          if (storedBuckets) {
+            setAllBuckets(JSON.parse(storedBuckets));
+          }
         }
-    } catch (e) {
+      } catch (e) {
         console.error("Failed to load buckets from localStorage", e);
-        setBuckets([]);
+        setAllBuckets([]);
+      }
     }
     setIsLoaded(true);
   }, []);
 
   useEffect(() => {
-    if (isLoaded) {
-        try {
-            localStorage.setItem('s3-buckets', JSON.stringify(buckets));
-        } catch(e) {
-            console.error("Failed to save buckets to localStorage", e);
+    if (isLoaded && typeof window !== 'undefined') {
+      try {
+        const storage = window.localStorage;
+        if (storage && typeof storage.setItem === 'function') {
+          storage.setItem('s3-buckets', JSON.stringify(allBuckets));
         }
+      } catch (e) {
+        console.error("Failed to save buckets to localStorage", e);
+      }
     }
-  }, [buckets, isLoaded]);
+  }, [allBuckets, isLoaded]);
+
+  const userBuckets = React.useMemo(() => {
+    if (!user) return [];
+    return allBuckets.filter(b => {
+      if (b.owner) return b.owner === user.username;
+      // Default to admin visibility for legacy buckets (buckets with no owner)
+      // Adjust this logic if you want strict isolation
+      if (!b.owner && user.username === 'admin') return true;
+      return false;
+    });
+  }, [allBuckets, user]);
 
   const addBucket = (bucket: Omit<Bucket, 'id'>) => {
-    const newBucket = { ...bucket, id: crypto.randomUUID() };
-    setBuckets(prev => [...prev, newBucket]);
+    if (!user) return; // Should not happen if guarded
+    const newBucket: Bucket = {
+      ...bucket,
+      id: crypto.randomUUID(),
+      owner: user.username
+    };
+    setAllBuckets(prev => [...prev, newBucket]);
   };
 
   const updateBucket = (id: string, updatedBucket: Omit<Bucket, 'id'>) => {
-    setBuckets(prev => prev.map(b => b.id === id ? { ...updatedBucket, id } : b));
+    setAllBuckets(prev => prev.map(b => b.id === id ? { ...updatedBucket, id, owner: b.owner } : b));
   };
 
   const deleteBucket = (id: string) => {
-    setBuckets(prev => prev.filter(b => b.id !== id));
+    setAllBuckets(prev => prev.filter(b => b.id !== id));
+    if (selectedBucket?.id === id) {
+      setSelectedBucket(null);
+    }
   };
-  
+
   const getBucketById = (id: string) => {
-    return buckets.find(b => b.id === id);
+    // We search in allBuckets, but technically we should restrict to userBuckets?
+    // But update/delete operations need to find it. 
+    // And getBucketById is likely used for display. 
+    // Let's return from userBuckets to be safe.
+    return userBuckets.find(b => b.id === id);
   };
 
   const setBucketStatus = (id: string, status: Bucket['status']) => {
-    setBuckets(prev => prev.map(b => b.id === id ? { ...b, status } : b));
+    setAllBuckets(prev => prev.map(b => b.id === id ? { ...b, status } : b));
   }
 
+  // Deselect if the current bucket is no longer in the user's list
+  useEffect(() => {
+    if (selectedBucket && !userBuckets.some(b => b.id === selectedBucket.id)) {
+      setSelectedBucket(null);
+    }
+  }, [userBuckets, selectedBucket]);
+
   return (
-    <BucketContext.Provider value={{ buckets, selectedBucket, addBucket, updateBucket, deleteBucket, setSelectedBucket, getBucketById, setBucketStatus }}>
+    <BucketContext.Provider value={{ buckets: userBuckets, selectedBucket, addBucket, updateBucket, deleteBucket, setSelectedBucket, getBucketById, setBucketStatus }}>
       {children}
     </BucketContext.Provider>
   );

@@ -23,20 +23,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { validateUser } = useUser();
 
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem('s3-user');
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        if (validateUser(parsedUser.username, parsedUser.password)) {
-          setUser(parsedUser);
-          setIsAuthenticated(true);
-        } else {
-            // Stored credentials are no longer valid
-            localStorage.removeItem('s3-user');
+    if (typeof window !== 'undefined') {
+      try {
+        const storage = window.localStorage;
+        if (storage && typeof storage.getItem === 'function') {
+          const storedUser = storage.getItem('s3-user');
+          if (storedUser) {
+            const parsedUser = JSON.parse(storedUser);
+            if (validateUser(parsedUser.username, parsedUser.password)) {
+              setUser(parsedUser);
+              setIsAuthenticated(true);
+            } else {
+              // Stored credentials are no longer valid
+              storage.removeItem('s3-user');
+            }
+          }
         }
+      } catch (error) {
+        console.error("Could not parse user from localStorage", error);
       }
-    } catch (error) {
-      console.error("Could not parse user from localStorage", error);
     }
     setIsLoading(false);
   }, [validateUser]);
@@ -44,7 +49,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = (username: string, pass: string) => {
     if (validateUser(username, pass)) {
       const userToStore = { username, password: pass };
-      localStorage.setItem('s3-user', JSON.stringify(userToStore));
+      if (typeof window !== 'undefined' && window.localStorage && typeof window.localStorage.setItem === 'function') {
+        window.localStorage.setItem('s3-user', JSON.stringify(userToStore));
+      }
       setUser(userToStore);
       setIsAuthenticated(true);
       return true;
@@ -53,7 +60,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
-    localStorage.removeItem('s3-user');
+    if (typeof window !== 'undefined' && window.localStorage && typeof window.localStorage.removeItem === 'function') {
+      window.localStorage.removeItem('s3-user');
+    }
     setIsAuthenticated(false);
     setUser(null);
     router.push('/login');

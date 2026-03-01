@@ -10,6 +10,7 @@ import JSZip from "jszip";
 const S3ConfigSchema = z.object({
   accessKeyId: z.string().optional(),
   secretAccessKey: z.string().optional(),
+  sessionToken: z.string().optional(),
   region: z.string().min(1, { message: "Region is required." }),
   bucket: z.string().min(1, { message: "Bucket name is required." }),
 });
@@ -25,6 +26,7 @@ function getS3Client(config: S3Config): S3Client {
       s3ClientOptions.credentials = {
         accessKeyId: config.accessKeyId,
         secretAccessKey: config.secretAccessKey,
+        sessionToken: config.sessionToken,
       };
     }
     return new S3Client(s3ClientOptions);

@@ -22,6 +22,7 @@ const formSchema = z.object({
   name: z.string().min(1, { message: "Bucket alias is required." }),
   accessKeyId: z.string().optional(),
   secretAccessKey: z.string().optional(),
+  sessionToken: z.string().optional(),
   region: z.string().min(1, { message: "Region is required." }),
   bucket: z.string().min(1, { message: "Bucket name is required." }),
   folder: z.string().optional(),
@@ -38,6 +39,7 @@ interface CredentialsFormProps {
 
 export function CredentialsForm({ onSave, onCancel, initialData, isEditing = false }: CredentialsFormProps) {
   const [showSecret, setShowSecret] = useState(false);
+  const [showToken, setShowToken] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<S3Config>({
@@ -46,6 +48,7 @@ export function CredentialsForm({ onSave, onCancel, initialData, isEditing = fal
       name: "",
       accessKeyId: "",
       secretAccessKey: "",
+      sessionToken: "",
       region: "",
       bucket: "",
       folder: "",
@@ -156,6 +159,38 @@ export function CredentialsForm({ onSave, onCancel, initialData, isEditing = fal
                   </Button>
                 </div>
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="sessionToken"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>AWS Session Token <span className="text-muted-foreground">(optional)</span></FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <Input
+                    type={showToken ? "text" : "password"}
+                    placeholder="Your session token"
+                    {...field}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute inset-y-0 right-0 h-full"
+                    onClick={() => setShowToken(!showToken)}
+                    aria-label={showToken ? "Hide session token" : "Show session token"}
+                  >
+                    {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </FormControl>
+              <div className="text-xs text-muted-foreground">
+                Required for temporary credentials (AWS STS, IAM roles, SSO)
+              </div>
               <FormMessage />
             </FormItem>
           )}

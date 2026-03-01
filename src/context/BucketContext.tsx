@@ -11,6 +11,7 @@ export interface Bucket {
   region: string;
   accessKeyId?: string;
   secretAccessKey?: string;
+  sessionToken?: string;
   status: 'untested' | 'connected' | 'failed';
   owner?: string;
   folder?: string;

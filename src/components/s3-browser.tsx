@@ -1,6 +1,6 @@
 "use client";
 
-import { S3Client, ListObjectsV2Command, _Object, CommonPrefix, S3ClientConfig } from "@aws-sdk/client-s3";
+import { _Object } from "@aws-sdk/client-s3";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,11 +12,10 @@ import UploadDialog from "./upload-dialog";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { useToast } from "@/hooks/use-toast";
 import type { Bucket } from "@/context/BucketContext";
-import { ToastAction } from "@/components/ui/toast";
 import { Input } from "./ui/input";
 import { Checkbox } from "./ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { getItemsAsZip } from "@/actions/s3";
+import { getItemsAsZip, listObjects } from "@/actions/s3";
 import {
   Pagination,
   PaginationContent,
@@ -27,6 +26,7 @@ import {
   PaginationPrevious
 } from "./ui/pagination";
 
+type CommonPrefix = { Prefix?: string };
 type S3Item = (_Object | CommonPrefix) & { type: 'file' | 'folder' };
 
 const getFileIcon = (key?: string) => {
@@ -73,7 +73,6 @@ export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
   const [selectedItem, setSelectedItem] = useState<S3Item | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const [s3Client, setS3Client] = useState<S3Client | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [isDownloading, setIsDownloading] = useState(false);
@@ -86,61 +85,33 @@ export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
     setPrefix(rootFolder);
   }, [rootFolder]);
 
-  useEffect(() => {
-    const s3ClientOptions: S3ClientConfig = {
-      region: config.region,
-    };
-    if (config.accessKeyId && config.secretAccessKey) {
-      s3ClientOptions.credentials = {
-        accessKeyId: config.accessKeyId,
-        secretAccessKey: config.secretAccessKey,
-      }
-    }
-    setS3Client(new S3Client(s3ClientOptions));
-  }, [config]);
-
   const fetchItems = useCallback(async (currentPrefix: string) => {
-    if (!s3Client) return;
     setIsLoading(true);
 
     try {
-      const command = new ListObjectsV2Command({
-        Bucket: config.bucket,
-        Prefix: currentPrefix,
-        Delimiter: "/",
-      });
-      const response = await s3Client.send(command);
-
-      const folders: S3Item[] = (response.CommonPrefixes || []).map(p => ({ ...p, type: 'folder' }));
-      const files: S3Item[] = (response.Contents || []).filter(c => c.Key !== currentPrefix && c.Size! > 0).map(c => ({ ...c, type: 'file' }));
-
-      setItems([...folders, ...files]);
+      const result = await listObjects(config, currentPrefix);
+      const folderItems: S3Item[] = result.folders.map(p => ({ ...p, type: "folder" as const }));
+      const fileItems: S3Item[] = result.files.map(c => ({ ...c, type: "file" as const }));
+      setItems([...folderItems, ...fileItems]);
       setSelectedKeys(new Set()); // Clear selection on navigation
     } catch (e: any) {
-      let description = e.message || "Failed to fetch bucket contents. Please check credentials and bucket name.";
-      if (e.name === 'NetworkError' || (e.message && e.message.toLowerCase().includes('failed to fetch'))) {
-        description = "This might be a CORS issue. Your S3 bucket needs to be configured to allow requests from this web application's domain. Please check your bucket's CORS settings.";
-      }
+      const description = e.message || "Failed to fetch bucket contents. Please check credentials and bucket name.";
       toast({
         variant: "destructive",
         title: "Connection Error",
         description: description,
-        action: description.includes('CORS') ?
-          <ToastAction altText="Learn More" onClick={() => window.open('https://docs.aws.amazon.com/AmazonS3/latest/userguide/cors.html', '_blank')}>Learn More</ToastAction> : undefined,
-        duration: description.includes('CORS') ? 20000 : 5000,
+        duration: 5000,
       });
       console.error(e);
       onDisconnect();
     } finally {
       setIsLoading(false);
     }
-  }, [config.bucket, s3Client, toast, onDisconnect]);
+  }, [config, toast, onDisconnect]);
 
   useEffect(() => {
-    if (s3Client) {
-      fetchItems(prefix);
-    }
-  }, [prefix, s3Client, fetchItems]);
+    fetchItems(prefix);
+  }, [prefix, fetchItems]);
 
   const handleItemClick = (item: S3Item, e: React.MouseEvent) => {
     // prevent navigation if a checkbox or the row itself was clicked, but allow opening details

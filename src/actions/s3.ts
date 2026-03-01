@@ -32,6 +32,26 @@ function getS3Client(config: S3Config): S3Client {
     return new S3Client(s3ClientOptions);
 }
 
+export async function listObjects(
+  config: Bucket,
+  prefix: string
+): Promise<{ folders: { Prefix: string }[]; files: { Key?: string; LastModified?: Date; Size?: number }[] }> {
+  const s3Client = getS3Client(config);
+  const command = new ListObjectsV2Command({
+    Bucket: config.bucket,
+    Prefix: prefix,
+    Delimiter: "/",
+  });
+  const response = await s3Client.send(command);
+  const folders = (response.CommonPrefixes || []).filter(p => p.Prefix) as { Prefix: string }[];
+  const files = (response.Contents || []).filter(c => c.Key !== prefix && (c.Size ?? 0) > 0).map(c => ({
+    Key: c.Key,
+    LastModified: c.LastModified,
+    Size: c.Size,
+  }));
+  return { folders, files };
+}
+
 export async function validateS3Connection(config: S3Config): Promise<{ success: boolean; message: string }> {
   try {
     const validatedConfig = S3ConfigSchema.parse(config);

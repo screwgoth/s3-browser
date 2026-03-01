@@ -94,6 +94,19 @@ export async function getObjectUrl(config: Bucket, key: string): Promise<string>
   return url;
 }
 
+export async function getObjectContent(
+  config: Bucket,
+  key: string
+): Promise<{ base64: string; contentType: string }> {
+  const s3Client = getS3Client(config);
+  const command = new GetObjectCommand({ Bucket: config.bucket, Key: key });
+  const response = await s3Client.send(command);
+  const buffer = await streamToBuffer(response.Body);
+  const base64 = buffer.toString("base64");
+  const contentType = response.ContentType || "application/octet-stream";
+  return { base64, contentType };
+}
+
 async function streamToBuffer(stream: GetObjectCommandOutput['Body']): Promise<Buffer> {
     if (!stream) {
         return Buffer.alloc(0);

@@ -3,7 +3,7 @@ import { _Object, CommonPrefix } from "@aws-sdk/client-s3";
 import { formatBytes } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
-import { getObjectUrl, getFolderContentsAsZip } from "@/actions/s3";
+import { getObjectContent, getFolderContentsAsZip } from "@/actions/s3";
 import type { Bucket } from "@/context/BucketContext";
 import { Download, Loader2 } from "lucide-react";
 import { useState } from "react";
@@ -34,22 +34,19 @@ export default function ObjectDetails({ item, bucketConfig, open, onOpenChange }
 
     try {
         if (isFile) {
-            const url = await getObjectUrl(bucketConfig, fullPath);
-            // Force download by fetching the file and creating a blob URL
-            const response = await fetch(url);
-            const blob = await response.blob();
+            const { base64, contentType } = await getObjectContent(bucketConfig, fullPath);
+            const byteCharacters = atob(base64);
+            const byteNumbers = new Array(byteCharacters.length).fill(0).map((_, i) => byteCharacters.charCodeAt(i));
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: contentType });
             const blobUrl = window.URL.createObjectURL(blob);
-            
-            // Create a temporary link to trigger the download
-            const link = document.createElement('a');
+            const link = document.createElement("a");
             link.href = blobUrl;
-            link.setAttribute('download', name || 'download');
-            link.style.display = 'none';
+            link.setAttribute("download", name || "download");
+            link.style.display = "none";
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            
-            // Clean up the blob URL to free memory
             window.URL.revokeObjectURL(blobUrl);
         } else {
             // It's a folder, zip it

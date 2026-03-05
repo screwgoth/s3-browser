@@ -11,7 +11,8 @@ import ObjectDetails from "./object-details";
 import UploadDialog from "./upload-dialog";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { useToast } from "@/hooks/use-toast";
-import type { Bucket } from "@/context/BucketContext";
+import type { BucketWithPermission } from "@/context/BucketContext";
+import { useBucket } from "@/context/BucketContext";
 import { Input } from "./ui/input";
 import { Checkbox } from "./ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
@@ -57,11 +58,14 @@ const getFileIcon = (key?: string) => {
 };
 
 interface S3BrowserProps {
-  config: Bucket;
+  config: BucketWithPermission;
   onDisconnect: () => void;
 }
 
 export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
+  const { canUploadToBucket } = useBucket();
+  const canUpload = canUploadToBucket(config.id);
+
   // Ensure root folder ends with /
   const rootFolder = useMemo(() => {
     if (!config.folder) return "";
@@ -255,7 +259,12 @@ export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
           </div>
         </div>
         <div className="flex items-center gap-4 w-full md:w-auto">
-          <Button onClick={() => setUploadDialogOpen(true)} variant="outline">
+          <Button 
+            onClick={() => setUploadDialogOpen(true)} 
+            variant="outline"
+            disabled={!canUpload}
+            title={!canUpload ? "You don't have permission to upload to this bucket" : "Upload files"}
+          >
             <Upload className="mr-2 h-4 w-4" />
             Upload Files
           </Button>

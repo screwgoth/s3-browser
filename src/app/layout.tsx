@@ -4,6 +4,7 @@ import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import { BucketProvider } from '@/context/BucketContext';
 import { UserProvider } from '@/context/UserContext';
+import { BucketAssignmentProvider } from '@/context/BucketAssignmentContext';
 import fs from 'fs';
 import path from 'path';
 
@@ -28,9 +29,11 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <UserProvider>
           <AuthProvider>
-            <BucketProvider>
-              {children}
-            </BucketProvider>
+            <BucketAssignmentProvider>
+              <BucketProvider>
+                {children}
+              </BucketProvider>
+            </BucketAssignmentProvider>
           </AuthProvider>
         </UserProvider>
         <Toaster />

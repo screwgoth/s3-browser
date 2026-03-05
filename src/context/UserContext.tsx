@@ -78,13 +78,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
     setUsers(prev => [...prev, { username, password: pass }]);
-    toast({ title: 'Success', description: `User "${username}" added.` });
+    toast({ title: 'Success', description: `User "${username}" added.`, duration: 500 });
     return true;
   };
 
   const updateUser = (username: string, pass: string) => {
     setUsers(prev => prev.map(u => u.username === username ? { ...u, password: pass } : u));
-    toast({ title: 'Success', description: `Password for "${username}" updated.` });
+    toast({ title: 'Success', description: `Password for "${username}" updated.`, duration: 500 });
   };
 
   const deleteUser = (username: string) => {
@@ -93,7 +93,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setUsers(prev => prev.filter(u => u.username !== username));
-    toast({ title: 'Success', description: `User "${username}" deleted.` });
+    toast({ title: 'Success', description: `User "${username}" deleted.`, duration: 500 });
   };
 
   const validateUser = (username: string, pass: string) => {

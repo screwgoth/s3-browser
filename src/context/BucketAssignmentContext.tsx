@@ -74,14 +74,16 @@ export function BucketAssignmentProvider({ children }: { children: React.ReactNo
       ));
       toast({ 
         title: 'Updated', 
-        description: `Permission for "${username}" updated to ${permission}.` 
+        description: `Permission for "${username}" updated to ${permission}.`,
+        duration: 500
       });
     } else {
       // Add new assignment
       setAssignments(prev => [...prev, { bucketId, username, permission }]);
       toast({ 
         title: 'Assigned', 
-        description: `User "${username}" assigned to bucket with ${permission} permission.` 
+        description: `User "${username}" assigned to bucket with ${permission} permission.`,
+        duration: 500
       });
     }
   };
@@ -92,7 +94,8 @@ export function BucketAssignmentProvider({ children }: { children: React.ReactNo
     ));
     toast({ 
       title: 'Removed', 
-      description: `User "${username}" removed from bucket.` 
+      description: `User "${username}" removed from bucket.`,
+      duration: 500
     });
   };
 
@@ -104,7 +107,8 @@ export function BucketAssignmentProvider({ children }: { children: React.ReactNo
     ));
     toast({ 
       title: 'Updated', 
-      description: `Permission updated to ${permission}.` 
+      description: `Permission updated to ${permission}.`,
+      duration: 500
     });
   };
 

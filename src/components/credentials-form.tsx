@@ -60,6 +60,7 @@ export function CredentialsForm({ onSave, onCancel, initialData, isEditing = fal
     toast({
       title: isEditing ? "Bucket Updated" : "Bucket Added",
       description: `Successfully saved "${values.name}".`,
+      duration: 500,
     });
   }
 

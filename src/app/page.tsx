@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash, Edit, LogOut, HardDrive, Loader2, Users, HelpCircle, CheckCircle, XCircle, RefreshCw, LayoutGrid, List, Shield, ShieldOff } from 'lucide-react';
+import { Plus, Trash, Edit, LogOut, HardDrive, Loader2, Users, HelpCircle, CheckCircle, XCircle, RefreshCw, LayoutGrid, List, Shield, ShieldOff, User } from 'lucide-react';
 import { CredentialsForm, type S3Config } from '@/components/credentials-form';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import LoginPage from './login/page';
@@ -97,7 +97,7 @@ export default function HomePage() {
     const result = await validateS3Connection(bucket);
     if (result.success) {
       setBucketStatus(bucket.id, 'connected');
-      toast({ title: 'Success', description: result.message, duration: 1000 });
+      toast({ title: 'Success', description: result.message, duration: 500 });
     } else {
       setBucketStatus(bucket.id, 'failed');
       toast({ variant: 'destructive', title: 'Connection Failed', description: result.message });
@@ -181,6 +181,9 @@ export default function HomePage() {
               </Link>
             </>
           )}
+          <Link href="/profile" passHref>
+            <Button variant="outline"><User className="mr-2 h-4 w-4" /> Profile</Button>
+          </Link>
           <Button variant="outline" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4" /> Logout</Button>
         </div>
       </header>

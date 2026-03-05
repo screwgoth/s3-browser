@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash, Edit, LogOut, HardDrive, Loader2, Users } from 'lucide-react';
+import { Plus, Trash, Edit, LogOut, HardDrive, Loader2, Users, Key } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -140,7 +140,7 @@ export default function UserManagementPage() {
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>{editingUser ? 'Edit User' : 'Add New User'}</DialogTitle>
+                <DialogTitle>{editingUser ? `Reset Password for ${editingUser.username}` : 'Add New User'}</DialogTitle>
               </DialogHeader>
               <UserForm 
                 onSave={handleSave} 
@@ -163,9 +163,16 @@ export default function UserManagementPage() {
                         <TableRow key={u.username}>
                             <TableCell className="font-medium">{u.username}{u.username === 'admin' && ' (Admin)'}</TableCell>
                             <TableCell className="text-right">
-                                {u.username !== 'admin' && (
-                                    <div className="flex gap-2 justify-end">
-                                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(u)}><Edit className="h-4 w-4" /></Button>
+                                <div className="flex gap-2 justify-end">
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        onClick={() => handleEditClick(u)}
+                                        title="Reset Password"
+                                    >
+                                        <Key className="h-4 w-4" />
+                                    </Button>
+                                    {u.username !== 'admin' && (
                                         <AlertDialog>
                                             <AlertDialogTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash className="h-4 w-4" /></Button>
@@ -183,8 +190,8 @@ export default function UserManagementPage() {
                                                 </AlertDialogFooter>
                                             </AlertDialogContent>
                                         </AlertDialog>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </TableCell>
                         </TableRow>
                     ))}

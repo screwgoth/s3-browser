@@ -50,6 +50,7 @@ export default function LoginPage() {
       toast({
         title: "Login Successful",
         description: "Welcome back!",
+        duration: 500,
       });
       // Delay navigation slightly to allow state to propagate
       setTimeout(() => {

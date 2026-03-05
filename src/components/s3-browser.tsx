@@ -178,7 +178,7 @@ export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
       link.click();
       document.body.removeChild(link);
 
-      toast({ title: "Download Started", description: `Your download of ${itemsToDownload.length} items has started.` });
+      toast({ title: "Download Started", description: `Your download of ${itemsToDownload.length} items has started.`, duration: 500 });
       setSelectedKeys(new Set()); // Clear selection after download
     } catch (error) {
       console.error("Download failed", error);

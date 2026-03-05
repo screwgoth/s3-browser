@@ -68,13 +68,26 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <Card className="w-full max-w-sm shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-2xl font-headline">S3 Navigator Login</CardTitle>
-          <CardDescription>Enter your credentials to access your buckets.</CardDescription>
+    <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-blue-950 dark:to-indigo-950">
+      {/* 3D ASCII Art Title */}
+      <div className="mb-8 text-center">
+        <pre className="text-[10px] sm:text-xs md:text-sm font-mono font-bold leading-tight text-transparent bg-clip-text bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 dark:from-blue-400 dark:via-indigo-400 dark:to-purple-400 select-none" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.1)' }}>
+{`
+   _____ ____     ____                                 
+  / ___/|___ \\   / __ )_________ _      __________  _____
+  \\__ \\  __/ /  / __  / ___/ __ \\ | /| / / ___/ _ \\/ ___/
+ ___/ / / __/  / /_/ / /  / /_/ / |/ |/ (__  )  __/ /    
+/____/ /____/  \\____/_/   \\____/|__/|__/____/\\___/_/     
+`}
+        </pre>
+      </div>
+
+      <Card className="w-full max-w-sm shadow-2xl border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+        <CardHeader className="space-y-1 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 rounded-t-lg border-b">
+          <CardTitle className="text-2xl font-bold text-center">Login</CardTitle>
+          <CardDescription className="text-center">Enter your credentials to continue</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
@@ -84,7 +97,11 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>Username</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter username" {...field} />
+                      <Input 
+                        placeholder="Enter username" 
+                        {...field}
+                        className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -102,6 +119,7 @@ export default function LoginPage() {
                           type={showPassword ? "text" : "password"}
                           placeholder="Enter password"
                           {...field}
+                          className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800"
                         />
                         <Button
                           type="button"
@@ -119,14 +137,23 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button 
+                type="submit" 
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg" 
+                disabled={isLoading}
+              >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Login
+                {isLoading ? "Signing in..." : "Sign In"}
               </Button>
             </form>
           </Form>
         </CardContent>
       </Card>
+
+      {/* Subtle footer text */}
+      <div className="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">
+        <p>Secure S3 Bucket Management</p>
+      </div>
     </main>
   );
 }

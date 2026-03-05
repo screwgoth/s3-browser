@@ -26,12 +26,33 @@ A modern, self-hosted S3 bucket browser built with Next.js 14. Browse, download,
 
 ## Getting Started
 
-### Prerequisites
+### Quick Start with Docker (Recommended)
 
+```bash
+git clone https://github.com/screwgoth/s3-browser.git
+cd s3-browser
+docker-compose up -d
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+**Docker commands:**
+```bash
+./docker.sh start    # Start the application
+./docker.sh stop     # Stop the application
+./docker.sh logs     # View logs
+./docker.sh rebuild  # Rebuild after code changes
+```
+
+See [DOCKER.md](DOCKER.md) for detailed Docker documentation.
+
+### Local Development
+
+**Prerequisites:**
 - Node.js 18+
 - npm or yarn
 
-### Installation
+**Installation:**
 
 ```bash
 git clone https://github.com/screwgoth/s3-browser.git
@@ -39,7 +60,7 @@ cd s3-browser
 npm install
 ```
 
-### Running Locally
+**Running Locally:**
 
 ```bash
 npm run dev
@@ -47,7 +68,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-### Production Build
+**Production Build:**
 
 ```bash
 npm run build

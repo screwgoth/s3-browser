@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  s3-browser:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: s3-navigator
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+    networks:
+      - s3-browser-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  s3-browser-network:
+    driver: bridge

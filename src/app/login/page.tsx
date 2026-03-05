@@ -71,14 +71,27 @@ export default function LoginPage() {
     <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-blue-950 dark:to-indigo-950">
       {/* 3D ASCII Art Title */}
       <div className="mb-8 text-center">
-        <pre className="text-[10px] sm:text-xs md:text-sm font-mono font-bold leading-tight text-transparent bg-clip-text bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 dark:from-blue-400 dark:via-indigo-400 dark:to-purple-400 select-none" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.1)' }}>
+        <pre className="text-[9px] sm:text-[11px] md:text-sm font-mono font-bold leading-tight select-none">
+          <span className="text-blue-600 dark:text-blue-400">
 {`
-   _____ ____     ____                                 
-  / ___/|___ \\   / __ )_________ _      __________  _____
-  \\__ \\  __/ /  / __  / ___/ __ \\ | /| / / ___/ _ \\/ ___/
- ___/ / / __/  / /_/ / /  / /_/ / |/ |/ (__  )  __/ /    
-/____/ /____/  \\____/_/   \\____/|__/|__/____/\\___/_/     
+   ██████╗ ██████╗     ██████╗ ██████╗  ██████╗ ██╗    ██╗███████╗███████╗██████╗ 
+  ██╔════╝ ╚════██╗    ██╔══██╗██╔══██╗██╔═══██╗██║    ██║██╔════╝██╔════╝██╔══██╗
+  ╚█████╗   █████╔╝    ██████╔╝██████╔╝██║   ██║██║ █╗ ██║███████╗█████╗  ██████╔╝
+   ╚═══██╗  ╚═══██╗    ██╔══██╗██╔══██╗██║   ██║██║███╗██║╚════██║██╔══╝  ██╔══██╗
+  ██████╔╝ ██████╔╝    ██████╔╝██║  ██║╚██████╔╝╚███╔███╔╝███████║███████╗██║  ██║
+  ╚═════╝  ╚═════╝     ╚═════╝ ╚═╝  ╚═╝ ╚═════╝  ╚══╝╚══╝ ╚══════╝╚══════╝╚═╝  ╚═╝
 `}
+          </span>
+          <span className="text-indigo-500/50 dark:text-indigo-400/30 absolute top-[2px] left-[2px] -z-10">
+{`
+   ██████╗ ██████╗     ██████╗ ██████╗  ██████╗ ██╗    ██╗███████╗███████╗██████╗ 
+  ██╔════╝ ╚════██╗    ██╔══██╗██╔══██╗██╔═══██╗██║    ██║██╔════╝██╔════╝██╔══██╗
+  ╚█████╗   █████╔╝    ██████╔╝██████╔╝██║   ██║██║ █╗ ██║███████╗█████╗  ██████╔╝
+   ╚═══██╗  ╚═══██╗    ██╔══██╗██╔══██╗██║   ██║██║███╗██║╚════██║██╔══╝  ██╔══██╗
+  ██████╔╝ ██████╔╝    ██████╔╝██║  ██║╚██████╔╝╚███╔███╔╝███████║███████╗██║  ██║
+  ╚═════╝  ╚═════╝     ╚═════╝ ╚═╝  ╚═╝ ╚═════╝  ╚══╝╚══╝ ╚══════╝╚══════╝╚═╝  ╚═╝
+`}
+          </span>
         </pre>
       </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useBucket, type Bucket } from '@/context/BucketContext';
+import { useBucket, type BucketWithPermission } from '@/context/BucketContext';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash, Edit, LogOut, HardDrive, Loader2, Users, HelpCircle, CheckCircle, XCircle, RefreshCw, LayoutGrid, List } from 'lucide-react';
+import { Plus, Trash, Edit, LogOut, HardDrive, Loader2, Users, HelpCircle, CheckCircle, XCircle, RefreshCw, LayoutGrid, List, Shield, ShieldOff } from 'lucide-react';
 import { CredentialsForm, type S3Config } from '@/components/credentials-form';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import LoginPage from './login/page';
@@ -21,11 +21,11 @@ type ViewType = 'card' | 'list';
 
 export default function HomePage() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
-  const { buckets, addBucket, updateBucket, deleteBucket, setBucketStatus } = useBucket();
+  const { buckets, addBucket, updateBucket, deleteBucket, setBucketStatus, canEditBucket, canDeleteBucket } = useBucket();
   const router = useRouter();
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingBucket, setEditingBucket] = useState<Bucket | undefined>(undefined);
+  const [editingBucket, setEditingBucket] = useState<BucketWithPermission | undefined>(undefined);
   const [testingConnectionId, setTestingConnectionId] = useState<string | null>(null);
   const [view, setView] = useState<ViewType>('card');
 
@@ -52,7 +52,15 @@ export default function HomePage() {
     setIsFormOpen(true);
   };
 
-  const handleEditClick = (bucket: Bucket) => {
+  const handleEditClick = (bucket: BucketWithPermission) => {
+    if (!canEditBucket(bucket.id)) {
+      toast({
+        variant: "destructive",
+        title: "Permission Denied",
+        description: "Only the bucket owner can edit this configuration.",
+      });
+      return;
+    }
     setEditingBucket(bucket);
     setIsFormOpen(true);
   };
@@ -67,7 +75,7 @@ export default function HomePage() {
     setEditingBucket(undefined);
   };
 
-  const handleSelectBucket = (bucket: Bucket) => {
+  const handleSelectBucket = (bucket: BucketWithPermission) => {
     if (bucket.status !== 'connected') {
       toast({
         variant: "destructive",
@@ -84,7 +92,7 @@ export default function HomePage() {
     router.push('/login');
   };
 
-  const handleTestConnection = async (bucket: Bucket) => {
+  const handleTestConnection = async (bucket: BucketWithPermission) => {
     setTestingConnectionId(bucket.id);
     const result = await validateS3Connection(bucket);
     if (result.success) {
@@ -97,7 +105,7 @@ export default function HomePage() {
     setTestingConnectionId(null);
   };
 
-  const getStatusIcon = (status: Bucket['status']) => {
+  const getStatusIcon = (status: BucketWithPermission['status']) => {
     switch (status) {
       case 'connected':
         return <Badge variant="secondary" className="border-green-500 text-green-700"><CheckCircle className="mr-1 h-3 w-3" /> Connected</Badge>;
@@ -109,7 +117,7 @@ export default function HomePage() {
     }
   };
 
-  const BucketActions = ({ bucket }: { bucket: Bucket }) => (
+  const BucketActions = ({ bucket }: { bucket: BucketWithPermission }) => (
     <div className="flex gap-2 justify-end">
        <Button 
           variant="secondary" 
@@ -122,10 +130,25 @@ export default function HomePage() {
               <RefreshCw className="mr-2 h-4 w-4" />}
           Test
       </Button>
-      <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleEditClick(bucket); }}><Edit className="h-4 w-4" /></Button>
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={(e) => { e.stopPropagation(); handleEditClick(bucket); }}
+        disabled={!canEditBucket(bucket.id)}
+      >
+        <Edit className="h-4 w-4" />
+      </Button>
       <AlertDialog>
         <AlertDialogTrigger asChild>
-          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive h-9 w-9" onClick={(e) => e.stopPropagation()}><Trash className="h-4 w-4" /></Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="text-destructive hover:text-destructive h-9 w-9" 
+            onClick={(e) => e.stopPropagation()}
+            disabled={!canDeleteBucket(bucket.id)}
+          >
+            <Trash className="h-4 w-4" />
+          </Button>
         </AlertDialogTrigger>
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
@@ -149,9 +172,14 @@ export default function HomePage() {
         <h1 className="text-2xl font-headline flex items-center gap-2"><HardDrive/> S3 Navigator</h1>
         <div className="flex items-center gap-4">
           {user?.username === 'admin' && (
-             <Link href="/users" passHref>
+            <>
+              <Link href="/users" passHref>
                 <Button variant="outline"><Users className="mr-2 h-4 w-4" /> User Management</Button>
-            </Link>
+              </Link>
+              <Link href="/bucket-assignments" passHref>
+                <Button variant="outline"><Shield className="mr-2 h-4 w-4" /> Bucket Assignments</Button>
+              </Link>
+            </>
           )}
           <Button variant="outline" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4" /> Logout</Button>
         </div>
@@ -191,7 +219,18 @@ export default function HomePage() {
                   <CardHeader>
                     <div className="flex justify-between items-start">
                       <div>
-                        <CardTitle>{bucket.name}</CardTitle>
+                        <CardTitle className="flex items-center gap-2">
+                          {bucket.name}
+                          {!bucket.isOwner && bucket.permission && (
+                            <Badge variant={bucket.permission === 'read-write' ? 'default' : 'secondary'} className="text-xs">
+                              {bucket.permission === 'read-write' ? (
+                                <><Shield className="mr-1 h-3 w-3" /> R/W</>
+                              ) : (
+                                <><ShieldOff className="mr-1 h-3 w-3" /> R/O</>
+                              )}
+                            </Badge>
+                          )}
+                        </CardTitle>
                         <CardDescription>s3://{bucket.bucket}</CardDescription>
                       </div>
                       {getStatusIcon(bucket.status)}
@@ -199,6 +238,11 @@ export default function HomePage() {
                   </CardHeader>
                   <CardContent className="flex-grow">
                     <p className="text-sm text-muted-foreground">Region: {bucket.region}</p>
+                    {!bucket.isOwner && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Shared by: {bucket.owner || 'admin'}
+                      </p>
+                    )}
                   </CardContent>
                   <CardFooter className="flex justify-between">
                     <Button variant="outline" onClick={(e) => { e.stopPropagation(); handleSelectBucket(bucket); }} disabled={bucket.status !== 'connected'}>Browse</Button>
@@ -217,6 +261,7 @@ export default function HomePage() {
                             <TableHead>Name</TableHead>
                             <TableHead>Bucket</TableHead>
                             <TableHead>Region</TableHead>
+                            <TableHead>Permission</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -227,6 +272,19 @@ export default function HomePage() {
                                 <TableCell className="font-medium">{bucket.name}</TableCell>
                                 <TableCell>s3://{bucket.bucket}</TableCell>
                                 <TableCell>{bucket.region}</TableCell>
+                                <TableCell>
+                                  {bucket.isOwner ? (
+                                    <Badge variant="outline">Owner</Badge>
+                                  ) : bucket.permission ? (
+                                    <Badge variant={bucket.permission === 'read-write' ? 'default' : 'secondary'}>
+                                      {bucket.permission === 'read-write' ? (
+                                        <><Shield className="mr-1 h-3 w-3" /> Read & Write</>
+                                      ) : (
+                                        <><ShieldOff className="mr-1 h-3 w-3" /> Read Only</>
+                                      )}
+                                    </Badge>
+                                  ) : null}
+                                </TableCell>
                                 <TableCell>{getStatusIcon(bucket.status)}</TableCell>
                                 <TableCell className="text-right">
                                     <BucketActions bucket={bucket} />

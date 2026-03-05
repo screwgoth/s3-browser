@@ -7,12 +7,12 @@ import { Progress } from "@/components/ui/progress";
 import { Upload, X, File, AlertCircle, CheckCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { uploadObject } from "@/actions/s3";
-import type { Bucket } from "@/context/BucketContext";
+import type { BucketWithPermission } from "@/context/BucketContext";
 
 interface UploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  bucketConfig: Bucket;
+  bucketConfig: BucketWithPermission;
   currentPrefix: string;
   onUploadComplete: () => void;
 }

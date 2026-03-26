@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
+    localPatterns: [
+      {
+        pathname: '/uploads/**',
+      },
+    ],
   },
   // Configuration for Replit environment
   // Allow all hosts for development server in Replit

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash, Edit, LogOut, HardDrive, Loader2, Users, HelpCircle, CheckCircle, XCircle, RefreshCw, LayoutGrid, List, Shield, ShieldOff, User } from 'lucide-react';
+import { Plus, Trash, Edit, LogOut, HardDrive, Loader2, Users, HelpCircle, CheckCircle, XCircle, RefreshCw, LayoutGrid, List, Shield, ShieldOff, User, Settings } from 'lucide-react';
 import { CredentialsForm, type S3Config } from '@/components/credentials-form';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import LoginPage from './login/page';
@@ -17,6 +17,7 @@ import { validateS3Connection } from '@/actions/s3';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { usePermission } from '@/hooks/use-permission';
+import { SiteLogo } from '@/components/site-logo';
 import type { UserRole } from '@/context/UserContext';
 
 const roleBadgeClass: Record<UserRole, string> = {
@@ -183,9 +184,12 @@ export default function HomePage() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="p-4 border-b flex justify-between items-center">
-        <h1 className="text-2xl font-headline flex items-center gap-2"><HardDrive/> S3 Navigator</h1>
+    <div className="min-h-screen skeu-bg">
+      <header className="skeu-header p-4 border-b flex justify-between items-center">
+        <h1 className="text-2xl font-bold flex items-center gap-3">
+          <SiteLogo size="sm" />
+          <HardDrive className="h-6 w-6" /> S3 Navigator
+        </h1>
         <div className="flex items-center gap-4">
           {user && (
             <Badge className={roleBadgeClass[role]}>
@@ -199,6 +203,9 @@ export default function HomePage() {
               </Link>
               <Link href="/bucket-assignments" passHref>
                 <Button variant="outline"><Shield className="mr-2 h-4 w-4" /> Bucket Assignments</Button>
+              </Link>
+              <Link href="/admin" passHref>
+                <Button variant="outline"><Settings className="mr-2 h-4 w-4" /> Settings</Button>
               </Link>
             </>
           )}

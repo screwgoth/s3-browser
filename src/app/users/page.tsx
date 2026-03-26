@@ -19,6 +19,7 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import Link from 'next/link';
+import { SiteLogo } from '@/components/site-logo';
 
 const roleBadgeClass: Record<UserRole, string> = {
   viewer: 'bg-gray-100 text-gray-700',
@@ -171,9 +172,12 @@ export default function UserManagementPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-       <header className="p-4 border-b flex justify-between items-center">
-        <h1 className="text-2xl font-headline flex items-center gap-2"><Link href="/" passHref><Button variant="ghost" className="text-2xl"><HardDrive/> S3 Navigator</Button></Link></h1>
+    <div className="min-h-screen skeu-bg">
+       <header className="skeu-header p-4 border-b flex justify-between items-center">
+        <h1 className="text-2xl font-bold flex items-center gap-3">
+          <SiteLogo size="sm" />
+          <Link href="/" passHref><Button variant="ghost" className="text-2xl"><HardDrive/> S3 Navigator</Button></Link>
+        </h1>
         <div className="flex items-center gap-4">
           <Button variant="outline" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4" /> Logout</Button>
         </div>

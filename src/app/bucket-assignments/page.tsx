@@ -10,9 +10,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, UserPlus } from 'lucide-react';
+import { Trash2, UserPlus, Shield } from 'lucide-react';
 import type { UserRole } from '@/context/UserContext';
 import { writeAuditLog } from '@/actions/audit';
+import { SiteLogo } from '@/components/site-logo';
 
 const roleBadgeClass: Record<UserRole, string> = {
   viewer: 'bg-gray-100 text-gray-700',
@@ -77,12 +78,17 @@ export default function BucketAssignmentsPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
-      <div className="mb-6">
-        <Button onClick={() => router.push('/')} variant="outline">
-          ← Back to Buckets
-        </Button>
+    <div className="min-h-screen skeu-bg">
+    <header className="skeu-header p-4 border-b flex justify-between items-center mb-6">
+      <div className="flex items-center gap-3">
+        <SiteLogo size="sm" />
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Shield className="h-6 w-6" /> Bucket Assignments
+        </h1>
       </div>
+      <Button onClick={() => router.push('/')} variant="outline">← Back to Buckets</Button>
+    </header>
+    <div className="container mx-auto p-6 max-w-6xl">
 
       <Card className="mb-8">
         <CardHeader>
@@ -201,6 +207,7 @@ export default function BucketAssignmentsPage() {
           })
         )}
       </div>
+    </div>
     </div>
   );
 }

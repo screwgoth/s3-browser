@@ -17,6 +17,7 @@ import {
   Users,
   Shield,
   Settings,
+  ShieldCheck,
   ChevronRight,
   ChevronDown,
 } from 'lucide-react';
@@ -44,7 +45,8 @@ export function AppSidebar({ title = 'S3 Navigator', titleIcon }: AppSidebarProp
   const [open, setOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { user, isAdmin, logout } = useAuth();
-  const { role } = usePermission();
+  const { role: rawRole } = usePermission();
+  const role = rawRole ?? 'viewer';
   const pathname = usePathname();
 
   const isActive = (path: string) => pathname === path;
@@ -163,6 +165,9 @@ export function AppSidebar({ title = 'S3 Navigator', titleIcon }: AppSidebarProp
                     </Link>
                     <Link href="/admin" onClick={() => setOpen(false)} className={navLinkClass('/admin')}>
                       <Settings className="h-4 w-4" /> Admin Settings
+                    </Link>
+                    <Link href="/admin/audit" onClick={() => setOpen(false)} className={navLinkClass('/admin/audit')}>
+                      <ShieldCheck className="h-4 w-4" /> Audit Trail
                     </Link>
                   </>
                 )}

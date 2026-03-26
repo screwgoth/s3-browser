@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Upload, Trash2, ImageIcon } from 'lucide-react';
@@ -54,7 +53,8 @@ export function LogoUpload() {
       <CardContent className="space-y-4">
         {logoUrl ? (
           <div className="flex items-center gap-4 p-4 border rounded-xl bg-white/60 shadow-inner">
-            <Image src={logoUrl} alt="Current logo" width={80} height={80} className="object-contain h-16 w-auto rounded" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={logoUrl} alt="Current logo" className="object-contain h-16 w-auto rounded" />
             <div className="flex-1">
               <p className="text-sm font-medium text-muted-foreground">Current logo</p>
             </div>

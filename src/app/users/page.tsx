@@ -11,15 +11,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash, LogOut, HardDrive, Loader2, Users, Key, ShieldCheck } from 'lucide-react';
+import { Plus, Trash, Loader2, Users, Key, ShieldCheck } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import Link from 'next/link';
-import { SiteLogo } from '@/components/site-logo';
+import { AppSidebar } from '@/components/app-sidebar';
 
 const roleBadgeClass: Record<UserRole, string> = {
   viewer: 'bg-gray-100 text-gray-700',
@@ -114,7 +113,7 @@ const UserForm = ({ onSave, onCancel, initialData }: { onSave: (values: UserForm
 
 
 export default function UserManagementPage() {
-  const { user, isAuthenticated, isAdmin, isLoading: isAuthLoading, logout } = useAuth();
+  const { user, isAuthenticated, isAdmin, isLoading: isAuthLoading } = useAuth();
   const { users, addUser, updateUser, updateUserRole, deleteUser } = useUser();
   const [roleDialogUser, setRoleDialogUser] = useState<User | null>(null);
   const [pendingRole, setPendingRole] = useState<UserRole>('viewer');
@@ -166,22 +165,9 @@ export default function UserManagementPage() {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    router.push('/login');
-  };
-
   return (
     <div className="min-h-screen skeu-bg">
-       <header className="skeu-header p-4 border-b flex justify-between items-center">
-        <h1 className="text-2xl font-bold flex items-center gap-3">
-          <SiteLogo size="sm" />
-          <Link href="/" passHref><Button variant="ghost" className="text-2xl"><HardDrive/> S3 Navigator</Button></Link>
-        </h1>
-        <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4" /> Logout</Button>
-        </div>
-      </header>
+      <AppSidebar title="User Management" titleIcon={<Users className="h-5 w-5" />} />
       <main className="p-4 md:p-8">
       <Card className="w-full max-w-4xl mx-auto">
         <CardHeader className="flex flex-row justify-between items-center">

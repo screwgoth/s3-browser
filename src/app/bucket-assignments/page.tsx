@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Trash2, UserPlus, Shield } from 'lucide-react';
 import type { UserRole } from '@/context/UserContext';
 import { writeAuditLog } from '@/actions/audit';
-import { SiteLogo } from '@/components/site-logo';
+import { AppSidebar } from '@/components/app-sidebar';
 
 const roleBadgeClass: Record<UserRole, string> = {
   viewer: 'bg-gray-100 text-gray-700',
@@ -79,15 +79,7 @@ export default function BucketAssignmentsPage() {
 
   return (
     <div className="min-h-screen skeu-bg">
-    <header className="skeu-header p-4 border-b flex justify-between items-center mb-6">
-      <div className="flex items-center gap-3">
-        <SiteLogo size="sm" />
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Shield className="h-6 w-6" /> Bucket Assignments
-        </h1>
-      </div>
-      <Button onClick={() => router.push('/')} variant="outline">← Back to Buckets</Button>
-    </header>
+    <AppSidebar title="Bucket Assignments" titleIcon={<Shield className="h-5 w-5" />} />
     <div className="container mx-auto p-6 max-w-6xl">
 
       <Card className="mb-8">
@@ -211,3 +203,4 @@ export default function BucketAssignmentsPage() {
     </div>
   );
 }
+

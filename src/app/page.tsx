@@ -9,35 +9,20 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash, Edit, LogOut, HardDrive, Loader2, Users, HelpCircle, CheckCircle, XCircle, RefreshCw, LayoutGrid, List, Shield, ShieldOff, User, Settings } from 'lucide-react';
+import { Plus, Trash, Edit, HardDrive, Loader2, HelpCircle, CheckCircle, XCircle, RefreshCw, LayoutGrid, List, ShieldOff } from 'lucide-react';
 import { CredentialsForm, type S3Config } from '@/components/credentials-form';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import LoginPage from './login/page';
 import { validateS3Connection } from '@/actions/s3';
 import { useToast } from '@/hooks/use-toast';
-import { Badge } from '@/components/ui/badge';
 import { usePermission } from '@/hooks/use-permission';
-import { SiteLogo } from '@/components/site-logo';
-import type { UserRole } from '@/context/UserContext';
-
-const roleBadgeClass: Record<UserRole, string> = {
-  viewer: 'bg-gray-100 text-gray-700',
-  uploader: 'bg-blue-100 text-blue-700',
-  'bucket-creator': 'bg-amber-100 text-amber-700',
-  admin: 'bg-red-100 text-red-700',
-};
-const roleLabels: Record<UserRole, string> = {
-  viewer: 'Viewer',
-  uploader: 'Uploader',
-  'bucket-creator': 'Bucket Creator',
-  admin: 'Admin',
-};
+import { AppSidebar } from '@/components/app-sidebar';
 
 type ViewType = 'card' | 'list';
 
 export default function HomePage() {
-  const { user, isAuthenticated, isAdmin, isLoading, logout } = useAuth();
-  const { canCreateBucket, role } = usePermission();
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const { canCreateBucket } = usePermission();
   const { buckets, addBucket, updateBucket, deleteBucket, setBucketStatus, canEditBucket, canDeleteBucket } = useBucket();
   const router = useRouter();
   const { toast } = useToast();
@@ -102,11 +87,6 @@ export default function HomePage() {
       return;
     }
     router.push(`/buckets/${bucket.id}`);
-  };
-
-  const handleLogout = () => {
-    logout();
-    router.push('/login');
   };
 
   const handleTestConnection = async (bucket: BucketWithPermission) => {
@@ -185,36 +165,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen skeu-bg">
-      <header className="skeu-header p-4 border-b flex justify-between items-center">
-        <h1 className="text-2xl font-bold flex items-center gap-3">
-          <SiteLogo size="sm" />
-          <HardDrive className="h-6 w-6" /> S3 Navigator
-        </h1>
-        <div className="flex items-center gap-4">
-          {user && (
-            <Badge className={roleBadgeClass[role]}>
-              {user.username} · {roleLabels[role]}
-            </Badge>
-          )}
-          {isAdmin && (
-            <>
-              <Link href="/users" passHref>
-                <Button variant="outline"><Users className="mr-2 h-4 w-4" /> User Management</Button>
-              </Link>
-              <Link href="/bucket-assignments" passHref>
-                <Button variant="outline"><Shield className="mr-2 h-4 w-4" /> Bucket Assignments</Button>
-              </Link>
-              <Link href="/admin" passHref>
-                <Button variant="outline"><Settings className="mr-2 h-4 w-4" /> Settings</Button>
-              </Link>
-            </>
-          )}
-          <Link href="/profile" passHref>
-            <Button variant="outline"><User className="mr-2 h-4 w-4" /> Profile</Button>
-          </Link>
-          <Button variant="outline" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4" /> Logout</Button>
-        </div>
-      </header>
+      <AppSidebar />
       <main className="p-4 md:p-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-3xl font-semibold">Bucket List</h2>

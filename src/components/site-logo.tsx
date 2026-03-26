@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
 import { getLogoUrl } from '@/actions/logo';
 
 interface SiteLogoProps {
@@ -10,30 +9,32 @@ interface SiteLogoProps {
 }
 
 const sizeMap = {
-  sm: { width: 32, height: 32, className: 'h-8 w-auto' },
-  md: { width: 48, height: 48, className: 'h-12 w-auto' },
-  lg: { width: 120, height: 120, className: 'h-24 w-auto' },
+  sm: 'h-8 w-auto max-w-[120px]',
+  md: 'h-12 w-auto max-w-[160px]',
+  lg: 'h-24 w-auto max-w-[240px]',
 };
 
 export function SiteLogo({ size = 'md', className = '' }: SiteLogoProps) {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    getLogoUrl().then(setLogoUrl);
+    getLogoUrl().then((url) => {
+      if (url) {
+        // Cache-bust so updated logo always shows
+        setLogoUrl(url + '?t=' + Date.now());
+      }
+    });
   }, []);
 
   if (!logoUrl) return null;
 
-  const { width, height, className: sizeClass } = sizeMap[size];
-
   return (
-    <Image
+    // Use plain <img> — avoids Next.js Image domain/config issues for local uploads
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
       src={logoUrl}
       alt="Site Logo"
-      width={width}
-      height={height}
-      className={`object-contain drop-shadow-md ${sizeClass} ${className}`}
-      priority
+      className={`object-contain drop-shadow-md ${sizeMap[size]} ${className}`}
     />
   );
 }

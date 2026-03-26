@@ -13,6 +13,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import { useToast } from "@/hooks/use-toast";
 import type { BucketWithPermission } from "@/context/BucketContext";
 import { useBucket } from "@/context/BucketContext";
+import { usePermission } from "@/hooks/use-permission";
 import { Input } from "./ui/input";
 import { Checkbox } from "./ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
@@ -64,7 +65,8 @@ interface S3BrowserProps {
 
 export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
   const { canUploadToBucket } = useBucket();
-  const canUpload = canUploadToBucket(config.id);
+  const { canUpload: canUploadRole } = usePermission();
+  const canUpload = canUploadToBucket(config.id) && canUploadRole();
 
   // Ensure root folder ends with /
   const rootFolder = useMemo(() => {
@@ -259,15 +261,16 @@ export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
           </div>
         </div>
         <div className="flex items-center gap-4 w-full md:w-auto">
+          {canUpload && (
           <Button 
             onClick={() => setUploadDialogOpen(true)} 
             variant="outline"
-            disabled={!canUpload}
-            title={!canUpload ? "You don't have permission to upload to this bucket" : "Upload files"}
+            title="Upload files"
           >
             <Upload className="mr-2 h-4 w-4" />
             Upload Files
           </Button>
+          )}
           {selectedKeys.size > 0 && (
             <Button onClick={handleDownloadSelected} disabled={isDownloading}>
               {isDownloading ? <Loader2 className="mr-2 animate-spin" /> : <Download className="mr-2" />}

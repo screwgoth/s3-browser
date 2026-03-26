@@ -106,6 +106,11 @@ export function BucketProvider({ children }: { children: React.ReactNode }) {
 
   const addBucket = (bucket: Omit<Bucket, 'id'>) => {
     if (!user) return;
+    // Only bucket-creator and admin can create buckets
+    if (!['bucket-creator', 'admin'].includes(user.role ?? '')) {
+      console.warn('User does not have permission to create buckets');
+      return;
+    }
     const newBucket: Bucket = {
       ...bucket,
       id: crypto.randomUUID(),
@@ -155,10 +160,9 @@ export function BucketProvider({ children }: { children: React.ReactNode }) {
     if (!user) return false;
     const bucket = getBucketById(bucketId);
     if (!bucket) return false;
-    // Owner can always upload
-    if (bucket.isOwner) return true;
-    // Assigned users can upload if they have read-write permission
-    return bucket.permission === 'read-write';
+    // Role always wins — viewer can never upload
+    const role = user.role ?? 'viewer';
+    return ['uploader', 'bucket-creator', 'admin'].includes(role);
   };
 
   // Deselect if the current bucket is no longer in the user's list

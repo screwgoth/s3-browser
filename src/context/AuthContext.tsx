@@ -3,12 +3,14 @@
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, type User } from './UserContext';
+import { useUser, type User, type UserRole } from './UserContext';
 
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: User | null;
+  isAdmin: boolean;
+  role: UserRole | null;
   login: (username: string, pass: string) => boolean;
   logout: () => void;
 }
@@ -20,7 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
-  const { validateUser } = useUser();
+  const { validateUser, users } = useUser();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -31,7 +33,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (storedUser) {
             const parsedUser = JSON.parse(storedUser);
             if (validateUser(parsedUser.username, parsedUser.password)) {
-              setUser(parsedUser);
+              // Re-hydrate role from UserContext (source of truth)
+              const freshUser = users.find(u => u.username === parsedUser.username);
+              const userWithRole = freshUser ?? parsedUser;
+              setUser(userWithRole);
               setIsAuthenticated(true);
             } else {
               // Stored credentials are no longer valid
@@ -48,7 +53,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = (username: string, pass: string) => {
     if (validateUser(username, pass)) {
-      const userToStore = { username, password: pass };
+      const freshUser = users.find(u => u.username === username);
+      const userToStore = freshUser ?? { username, password: pass, role: 'viewer' as UserRole };
       if (typeof window !== 'undefined' && window.localStorage && typeof window.localStorage.setItem === 'function') {
         window.localStorage.setItem('s3-user', JSON.stringify(userToStore));
       }
@@ -68,8 +74,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push('/login');
   };
 
+  const role = user?.role ?? null;
+  const isAdmin = role === 'admin';
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, isAdmin, role, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

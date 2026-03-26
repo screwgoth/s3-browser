@@ -3,13 +3,15 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useUser, type User } from '@/context/UserContext';
+import { useUser, type User, type UserRole } from '@/context/UserContext';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash, Edit, LogOut, HardDrive, Loader2, Users, Key } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Trash, LogOut, HardDrive, Loader2, Users, Key, ShieldCheck } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -18,9 +20,24 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import Link from 'next/link';
 
+const roleBadgeClass: Record<UserRole, string> = {
+  viewer: 'bg-gray-100 text-gray-700',
+  uploader: 'bg-blue-100 text-blue-700',
+  'bucket-creator': 'bg-amber-100 text-amber-700',
+  admin: 'bg-red-100 text-red-700',
+};
+
+const roleLabels: Record<UserRole, string> = {
+  viewer: 'Viewer',
+  uploader: 'Uploader',
+  'bucket-creator': 'Bucket Creator',
+  admin: 'Admin',
+};
+
 const userFormSchema = z.object({
   username: z.string().min(3, { message: "Username must be at least 3 characters." }),
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  role: z.enum(['viewer', 'uploader', 'bucket-creator', 'admin'] as const).default('viewer'),
 });
 
 type UserFormValues = z.infer<typeof userFormSchema>;
@@ -28,7 +45,7 @@ type UserFormValues = z.infer<typeof userFormSchema>;
 const UserForm = ({ onSave, onCancel, initialData }: { onSave: (values: UserFormValues) => void; onCancel: () => void; initialData?: User }) => {
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
-    defaultValues: initialData || { username: "", password: "" },
+    defaultValues: initialData ? { username: initialData.username, password: '', role: initialData.role ?? 'viewer' } : { username: '', password: '', role: 'viewer' },
   });
 
   return (
@@ -60,6 +77,31 @@ const UserForm = ({ onSave, onCancel, initialData }: { onSave: (values: UserForm
             </FormItem>
           )}
         />
+        {!initialData && (
+          <FormField
+            control={form.control}
+            name="role"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Role</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="viewer">Viewer</SelectItem>
+                    <SelectItem value="uploader">Uploader</SelectItem>
+                    <SelectItem value="bucket-creator">Bucket Creator</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
         <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
             <Button type="submit">{initialData ? 'Update Password' : 'Add User'}</Button>
@@ -72,7 +114,9 @@ const UserForm = ({ onSave, onCancel, initialData }: { onSave: (values: UserForm
 
 export default function UserManagementPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading, logout } = useAuth();
-  const { users, addUser, updateUser, deleteUser } = useUser();
+  const { users, addUser, updateUser, updateUserRole, deleteUser } = useUser();
+  const [roleDialogUser, setRoleDialogUser] = useState<User | null>(null);
+  const [pendingRole, setPendingRole] = useState<UserRole>('viewer');
   const router = useRouter();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | undefined>(undefined);
@@ -108,10 +152,17 @@ export default function UserManagementPage() {
     if (editingUser) {
       updateUser(editingUser.username, values.password);
     } else {
-      addUser(values.username, values.password);
+      addUser(values.username, values.password, values.role);
     }
     setIsFormOpen(false);
     setEditingUser(undefined);
+  };
+
+  const handleRoleChange = () => {
+    if (roleDialogUser) {
+      updateUserRole(roleDialogUser.username, pendingRole);
+      setRoleDialogUser(null);
+    }
   };
 
   const handleLogout = () => {
@@ -155,13 +206,19 @@ export default function UserManagementPage() {
                 <TableHeader>
                     <TableRow>
                         <TableHead>Username</TableHead>
+                        <TableHead>Role</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {users.map(u => (
                         <TableRow key={u.username}>
-                            <TableCell className="font-medium">{u.username}{u.username === 'admin' && ' (Admin)'}</TableCell>
+                            <TableCell className="font-medium">{u.username}</TableCell>
+                            <TableCell>
+                                <Badge className={roleBadgeClass[u.role ?? 'viewer']}>
+                                  {roleLabels[u.role ?? 'viewer']}
+                                </Badge>
+                            </TableCell>
                             <TableCell className="text-right">
                                 <div className="flex gap-2 justify-end">
                                     <Button 
@@ -173,6 +230,15 @@ export default function UserManagementPage() {
                                         <Key className="h-4 w-4" />
                                     </Button>
                                     {u.username !== 'admin' && (
+                                        <>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            title="Change Role"
+                                            onClick={() => { setRoleDialogUser(u); setPendingRole(u.role ?? 'viewer'); }}
+                                        >
+                                            <ShieldCheck className="h-4 w-4" />
+                                        </Button>
                                         <AlertDialog>
                                             <AlertDialogTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash className="h-4 w-4" /></Button>
@@ -190,6 +256,7 @@ export default function UserManagementPage() {
                                                 </AlertDialogFooter>
                                             </AlertDialogContent>
                                         </AlertDialog>
+                                        </>
                                     )}
                                 </div>
                             </TableCell>
@@ -200,6 +267,32 @@ export default function UserManagementPage() {
         </CardContent>
       </Card>
       </main>
+
+      {/* Change Role Dialog */}
+      <Dialog open={!!roleDialogUser} onOpenChange={(open) => { if (!open) setRoleDialogUser(null); }}>
+        <DialogContent className="sm:max-w-[360px]">
+          <DialogHeader>
+            <DialogTitle>Change Role — {roleDialogUser?.username}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <Select value={pendingRole} onValueChange={(v) => setPendingRole(v as UserRole)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="viewer">Viewer</SelectItem>
+                <SelectItem value="uploader">Uploader</SelectItem>
+                <SelectItem value="bucket-creator">Bucket Creator</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setRoleDialogUser(null)}>Cancel</Button>
+              <Button onClick={handleRoleChange}>Save Role</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -16,11 +16,27 @@ import LoginPage from './login/page';
 import { validateS3Connection } from '@/actions/s3';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { usePermission } from '@/hooks/use-permission';
+import type { UserRole } from '@/context/UserContext';
+
+const roleBadgeClass: Record<UserRole, string> = {
+  viewer: 'bg-gray-100 text-gray-700',
+  uploader: 'bg-blue-100 text-blue-700',
+  'bucket-creator': 'bg-amber-100 text-amber-700',
+  admin: 'bg-red-100 text-red-700',
+};
+const roleLabels: Record<UserRole, string> = {
+  viewer: 'Viewer',
+  uploader: 'Uploader',
+  'bucket-creator': 'Bucket Creator',
+  admin: 'Admin',
+};
 
 type ViewType = 'card' | 'list';
 
 export default function HomePage() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const { canCreateBucket, role } = usePermission();
   const { buckets, addBucket, updateBucket, deleteBucket, setBucketStatus, canEditBucket, canDeleteBucket } = useBucket();
   const router = useRouter();
   const { toast } = useToast();
@@ -171,6 +187,11 @@ export default function HomePage() {
       <header className="p-4 border-b flex justify-between items-center">
         <h1 className="text-2xl font-headline flex items-center gap-2"><HardDrive/> S3 Navigator</h1>
         <div className="flex items-center gap-4">
+          {user && (
+            <Badge className={roleBadgeClass[role]}>
+              {user.username} · {roleLabels[role]}
+            </Badge>
+          )}
           {user?.username === 'admin' && (
             <>
               <Link href="/users" passHref>
@@ -196,9 +217,11 @@ export default function HomePage() {
                 <Button variant={view === 'list' ? 'secondary' : 'ghost'} size="sm" onClick={() => setView('list')}><List/></Button>
             </div>
             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+              {canCreateBucket() && (
               <DialogTrigger asChild>
                 <Button onClick={handleAddClick}><Plus className="mr-2 h-4 w-4" /> Add S3 Bucket</Button>
               </DialogTrigger>
+              )}
               <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingBucket ? 'Edit Bucket' : 'Add New S3 Bucket'}</DialogTitle>
@@ -302,7 +325,7 @@ export default function HomePage() {
           <div className="text-center py-16 border-2 border-dashed rounded-lg">
             <h3 className="text-xl font-medium">No buckets yet</h3>
             <p className="text-muted-foreground mb-4">Add your first S3 bucket to get started.</p>
-            <Button onClick={handleAddClick}><Plus className="mr-2 h-4 w-4" /> Add S3 Bucket</Button>
+            {canCreateBucket() && <Button onClick={handleAddClick}><Plus className="mr-2 h-4 w-4" /> Add S3 Bucket</Button>}
           </div>
         )}
       </main>

@@ -4,15 +4,19 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
+export type UserRole = 'viewer' | 'uploader' | 'bucket-creator' | 'admin';
+
 export interface User {
   username: string;
   password?: string; // Should be hashed in a real app
+  role: UserRole;
 }
 
 interface UserContextType {
   users: User[];
-  addUser: (username: string, pass: string) => boolean;
+  addUser: (username: string, pass: string, role: UserRole) => boolean;
   updateUser: (username: string, pass: string) => void;
+  updateUserRole: (username: string, role: UserRole) => void;
   deleteUser: (username: string) => void;
   validateUser: (username: string, pass: string) => boolean;
 }
@@ -20,7 +24,7 @@ interface UserContextType {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 const defaultUsers: User[] = [
-  { username: 'admin', password: 's3brows3r' }
+  { username: 'admin', password: 's3brows3r', role: 'admin' }
 ];
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
@@ -36,12 +40,17 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           const storedUsers = storage.getItem('s3-users');
           if (storedUsers) {
             const parsedUsers = JSON.parse(storedUsers);
+            // Migrate users without role to 'viewer', admin to 'admin'
+            const migratedUsers = parsedUsers.map((u: User) => ({
+              ...u,
+              role: u.role ?? (u.username === 'admin' ? 'admin' : 'viewer'),
+            }));
             // Ensure admin user always exists
-            const adminExists = parsedUsers.some((u: User) => u.username === 'admin');
+            const adminExists = migratedUsers.some((u: User) => u.username === 'admin');
             if (!adminExists) {
-              setUsers([...defaultUsers, ...parsedUsers.filter((u: User) => u.username !== 'admin')]);
+              setUsers([...defaultUsers, ...migratedUsers.filter((u: User) => u.username !== 'admin')]);
             } else {
-              setUsers(parsedUsers);
+              setUsers(migratedUsers);
             }
           } else {
             setUsers(defaultUsers);
@@ -72,12 +81,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   }, [users, isLoaded]);
 
-  const addUser = (username: string, pass: string) => {
+  const addUser = (username: string, pass: string, role: UserRole = 'viewer') => {
     if (users.some(u => u.username === username)) {
       toast({ variant: 'destructive', title: 'Error', description: 'User already exists.' });
       return false;
     }
-    setUsers(prev => [...prev, { username, password: pass }]);
+    setUsers(prev => [...prev, { username, password: pass, role }]);
     toast({ title: 'Success', description: `User "${username}" added.`, duration: 500 });
     return true;
   };
@@ -85,6 +94,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const updateUser = (username: string, pass: string) => {
     setUsers(prev => prev.map(u => u.username === username ? { ...u, password: pass } : u));
     toast({ title: 'Success', description: `Password for "${username}" updated.`, duration: 500 });
+  };
+
+  const updateUserRole = (username: string, role: UserRole) => {
+    if (username === 'admin') {
+      toast({ variant: 'destructive', title: 'Error', description: 'Cannot change admin role.' });
+      return;
+    }
+    setUsers(prev => prev.map(u => u.username === username ? { ...u, role } : u));
+    toast({ title: 'Success', description: `Role for "${username}" updated to ${role}.`, duration: 500 });
   };
 
   const deleteUser = (username: string) => {
@@ -102,7 +120,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <UserContext.Provider value={{ users, addUser, updateUser, deleteUser, validateUser }}>
+    <UserContext.Provider value={{ users, addUser, updateUser, updateUserRole, deleteUser, validateUser }}>
       {children}
     </UserContext.Provider>
   );

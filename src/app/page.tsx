@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Trash, Edit, HardDrive, Loader2, HelpCircle, CheckCircle, XCircle, RefreshCw, LayoutGrid, List, ShieldOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { CredentialsForm, type S3Config } from '@/components/credentials-form';
@@ -184,6 +184,7 @@ export default function HomePage() {
               <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingBucket ? 'Edit Bucket' : 'Add New S3 Bucket'}</DialogTitle>
+                  <DialogDescription>{editingBucket ? 'Update the configuration for this bucket.' : 'Add a new S3-compatible bucket configuration.'}</DialogDescription>
                 </DialogHeader>
                 <CredentialsForm 
                   onSave={handleSave} 

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash, Loader2, Users, Key, ShieldCheck } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -182,6 +182,7 @@ export default function UserManagementPage() {
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>{editingUser ? `Reset Password for ${editingUser.username}` : 'Add New User'}</DialogTitle>
+                <DialogDescription>{editingUser ? 'Update the password for this user.' : 'Create a new user account and assign a role.'}</DialogDescription>
               </DialogHeader>
               <UserForm 
                 onSave={handleSave} 
@@ -263,6 +264,7 @@ export default function UserManagementPage() {
         <DialogContent className="sm:max-w-[360px]">
           <DialogHeader>
             <DialogTitle>Change Role — {roleDialogUser?.username}</DialogTitle>
+            <DialogDescription>Select a new role for this user. Changes take effect immediately.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <Select value={pendingRole} onValueChange={(v) => setPendingRole(v as UserRole)}>

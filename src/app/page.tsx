@@ -35,7 +35,7 @@ const roleLabels: Record<UserRole, string> = {
 type ViewType = 'card' | 'list';
 
 export default function HomePage() {
-  const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const { user, isAuthenticated, isAdmin, isLoading, logout } = useAuth();
   const { canCreateBucket, role } = usePermission();
   const { buckets, addBucket, updateBucket, deleteBucket, setBucketStatus, canEditBucket, canDeleteBucket } = useBucket();
   const router = useRouter();
@@ -192,7 +192,7 @@ export default function HomePage() {
               {user.username} · {roleLabels[role]}
             </Badge>
           )}
-          {user?.username === 'admin' && (
+          {isAdmin && (
             <>
               <Link href="/users" passHref>
                 <Button variant="outline"><Users className="mr-2 h-4 w-4" /> User Management</Button>

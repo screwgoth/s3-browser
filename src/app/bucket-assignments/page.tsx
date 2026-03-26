@@ -7,48 +7,73 @@ import { useUser } from '@/context/UserContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Trash2, UserPlus, Shield, ShieldOff } from 'lucide-react';
+import { Trash2, UserPlus } from 'lucide-react';
+import type { UserRole } from '@/context/UserContext';
+import { writeAuditLog } from '@/actions/audit';
+
+const roleBadgeClass: Record<UserRole, string> = {
+  viewer: 'bg-gray-100 text-gray-700',
+  uploader: 'bg-blue-100 text-blue-700',
+  'bucket-creator': 'bg-amber-100 text-amber-700',
+  admin: 'bg-red-100 text-red-700',
+};
+const roleLabels: Record<UserRole, string> = {
+  viewer: 'Viewer',
+  uploader: 'Uploader',
+  'bucket-creator': 'Bucket Creator',
+  admin: 'Admin',
+};
 
 export default function BucketAssignmentsPage() {
-  const { user, isLoading } = useAuth();
+  const { user, isAdmin, isLoading } = useAuth();
   const router = useRouter();
   const { allBuckets } = useBucket();
   const { users } = useUser();
-  const { 
-    getBucketAssignments, 
-    assignUserToBucket, 
+  const {
+    getBucketAssignments,
+    assignUserToBucket,
     removeUserFromBucket,
-    updateBucketPermission 
   } = useBucketAssignment();
 
   const [selectedBucketId, setSelectedBucketId] = useState<string>('');
   const [selectedUsername, setSelectedUsername] = useState<string>('');
-  const [selectedPermission, setSelectedPermission] = useState<'read-only' | 'read-write'>('read-only');
 
   useEffect(() => {
-    if (!isLoading && (!user || user.username !== 'admin')) {
+    if (!isLoading && !isAdmin) {
       router.push('/');
     }
-  }, [user, isLoading, router]);
+  }, [isAdmin, isLoading, router]);
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
   }
 
-  if (!user || user.username !== 'admin') {
-    return null;
-  }
+  if (!isAdmin) return null;
 
-  const adminBuckets = allBuckets.filter(b => b.owner === 'admin');
-  const nonAdminUsers = users.filter(u => u.username !== 'admin');
+  const nonAdminUsers = users.filter(u => u.role !== 'admin');
 
-  const handleAssignUser = () => {
+  const handleAssignUser = async () => {
     if (!selectedBucketId || !selectedUsername) return;
-    assignUserToBucket(selectedBucketId, selectedUsername, selectedPermission);
+    // Assign with a neutral permission value — role governs actual access
+    assignUserToBucket(selectedBucketId, selectedUsername, 'read-write');
+    await writeAuditLog(
+      user?.username ?? 'admin',
+      'BUCKET_ASSIGN',
+      `Assigned user "${selectedUsername}" to bucket "${allBuckets.find(b => b.id === selectedBucketId)?.name ?? selectedBucketId}"`
+    );
     setSelectedUsername('');
+  };
+
+  const handleRemoveUser = async (bucketId: string, username: string) => {
+    removeUserFromBucket(bucketId, username);
+    await writeAuditLog(
+      user?.username ?? 'admin',
+      'BUCKET_UNASSIGN',
+      `Removed user "${username}" from bucket "${allBuckets.find(b => b.id === bucketId)?.name ?? bucketId}"`
+    );
   };
 
   return (
@@ -63,67 +88,57 @@ export default function BucketAssignmentsPage() {
         <CardHeader>
           <CardTitle>Bucket User Assignments</CardTitle>
           <CardDescription>
-            Assign users to your buckets and set their permissions (read-only or read-write)
+            Assign users to buckets. Access level is determined by the user&apos;s role.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Select Bucket</label>
-                <Select value={selectedBucketId} onValueChange={setSelectedBucketId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose bucket" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {adminBuckets.map(bucket => (
-                      <SelectItem key={bucket.id} value={bucket.id}>
-                        {bucket.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Select Bucket</label>
+              <Select value={selectedBucketId} onValueChange={setSelectedBucketId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose bucket" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allBuckets.map(bucket => (
+                    <SelectItem key={bucket.id} value={bucket.id}>
+                      {bucket.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-              <div>
-                <label className="text-sm font-medium mb-2 block">Select User</label>
-                <Select value={selectedUsername} onValueChange={setSelectedUsername}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose user" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {nonAdminUsers.map(user => (
-                      <SelectItem key={user.username} value={user.username}>
-                        {user.username}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Select User</label>
+              <Select value={selectedUsername} onValueChange={setSelectedUsername}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose user" />
+                </SelectTrigger>
+                <SelectContent>
+                  {nonAdminUsers.map(u => (
+                    <SelectItem key={u.username} value={u.username}>
+                      <span className="flex items-center gap-2">
+                        {u.username}
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${roleBadgeClass[u.role ?? 'viewer']}`}>
+                          {roleLabels[u.role ?? 'viewer']}
+                        </span>
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-              <div>
-                <label className="text-sm font-medium mb-2 block">Permission</label>
-                <Select value={selectedPermission} onValueChange={(val: any) => setSelectedPermission(val)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="read-only">Read Only</SelectItem>
-                    <SelectItem value="read-write">Read & Write</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-end">
-                <Button 
-                  onClick={handleAssignUser}
-                  disabled={!selectedBucketId || !selectedUsername}
-                  className="w-full"
-                >
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Assign User
-                </Button>
-              </div>
+            <div className="flex items-end">
+              <Button
+                onClick={handleAssignUser}
+                disabled={!selectedBucketId || !selectedUsername}
+                className="w-full"
+              >
+                <UserPlus className="mr-2 h-4 w-4" />
+                Assign User
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -131,8 +146,8 @@ export default function BucketAssignmentsPage() {
 
       <div className="space-y-4">
         <h2 className="text-2xl font-bold">Current Assignments</h2>
-        
-        {adminBuckets.length === 0 ? (
+
+        {allBuckets.length === 0 ? (
           <Card>
             <CardContent className="pt-6">
               <p className="text-muted-foreground text-center">
@@ -141,66 +156,43 @@ export default function BucketAssignmentsPage() {
             </CardContent>
           </Card>
         ) : (
-          adminBuckets.map(bucket => {
+          allBuckets.map(bucket => {
             const assignments = getBucketAssignments(bucket.id);
-            
             return (
               <Card key={bucket.id}>
                 <CardHeader>
                   <CardTitle className="text-lg">{bucket.name}</CardTitle>
-                  <CardDescription className="text-sm">
-                    {bucket.bucket} • {bucket.region}
-                  </CardDescription>
+                  <CardDescription>{bucket.bucket} • {bucket.region}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {assignments.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No users assigned to this bucket yet.
-                    </p>
+                    <p className="text-sm text-muted-foreground">No users assigned yet.</p>
                   ) : (
                     <div className="space-y-2">
-                      {assignments.map(assignment => (
-                        <div 
-                          key={`${assignment.bucketId}-${assignment.username}`}
-                          className="flex items-center justify-between p-3 border rounded-lg"
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="font-medium">{assignment.username}</span>
-                            <Badge variant={assignment.permission === 'read-write' ? 'default' : 'secondary'}>
-                              {assignment.permission === 'read-write' ? (
-                                <><Shield className="mr-1 h-3 w-3" /> Read & Write</>
-                              ) : (
-                                <><ShieldOff className="mr-1 h-3 w-3" /> Read Only</>
-                              )}
-                            </Badge>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <Select
-                              value={assignment.permission}
-                              onValueChange={(val: any) => 
-                                updateBucketPermission(bucket.id, assignment.username, val)
-                              }
-                            >
-                              <SelectTrigger className="w-[140px] h-8">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="read-only">Read Only</SelectItem>
-                                <SelectItem value="read-write">Read & Write</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            
+                      {assignments.map(assignment => {
+                        const assignedUser = users.find(u => u.username === assignment.username);
+                        const role = assignedUser?.role ?? 'viewer';
+                        return (
+                          <div
+                            key={`${assignment.bucketId}-${assignment.username}`}
+                            className="flex items-center justify-between p-3 border rounded-lg"
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="font-medium">{assignment.username}</span>
+                              <Badge className={roleBadgeClass[role]}>
+                                {roleLabels[role]}
+                              </Badge>
+                            </div>
                             <Button
                               variant="destructive"
                               size="sm"
-                              onClick={() => removeUserFromBucket(bucket.id, assignment.username)}
+                              onClick={() => handleRemoveUser(bucket.id, assignment.username)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>

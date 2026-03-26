@@ -117,18 +117,33 @@ export function BucketProvider({ children }: { children: React.ReactNode }) {
       owner: user.username
     };
     setAllBucketsData(prev => [...prev, newBucket]);
+    import('@/actions/audit').then(({ writeAuditLog }) =>
+      writeAuditLog(user.username, 'BUCKET_CREATE', `Created bucket "${bucket.name}" (${bucket.bucket}) in ${bucket.region}`)
+    );
   };
 
   const updateBucket = (id: string, updatedBucket: Omit<Bucket, 'id'>) => {
-    setAllBucketsData(prev => prev.map(b => 
+    const existing = allBucketsData.find(b => b.id === id);
+    setAllBucketsData(prev => prev.map(b =>
       b.id === id ? { ...updatedBucket, id, owner: b.owner } : b
     ));
+    if (user && existing) {
+      import('@/actions/audit').then(({ writeAuditLog }) =>
+        writeAuditLog(user.username, 'BUCKET_UPDATE', `Updated bucket "${existing.name}" (${id})`)
+      );
+    }
   };
 
   const deleteBucket = (id: string) => {
+    const existing = allBucketsData.find(b => b.id === id);
     setAllBucketsData(prev => prev.filter(b => b.id !== id));
     if (selectedBucket?.id === id) {
       setSelectedBucket(null);
+    }
+    if (user && existing) {
+      import('@/actions/audit').then(({ writeAuditLog }) =>
+        writeAuditLog(user.username, 'BUCKET_DELETE', `Deleted bucket "${existing.name}" (${existing.bucket})`)
+      );
     }
   };
 

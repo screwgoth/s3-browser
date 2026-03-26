@@ -88,12 +88,18 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
     setUsers(prev => [...prev, { username, password: pass, role }]);
     toast({ title: 'Success', description: `User "${username}" added.`, duration: 500 });
+    import('@/actions/audit').then(({ writeAuditLog }) =>
+      writeAuditLog('admin', 'USER_CREATE', `Created user "${username}" with role "${role}"`)
+    );
     return true;
   };
 
   const updateUser = (username: string, pass: string) => {
     setUsers(prev => prev.map(u => u.username === username ? { ...u, password: pass } : u));
     toast({ title: 'Success', description: `Password for "${username}" updated.`, duration: 500 });
+    import('@/actions/audit').then(({ writeAuditLog }) =>
+      writeAuditLog('admin', 'USER_PASSWORD_CHANGE', `Password changed for user "${username}"`)
+    );
   };
 
   const updateUserRole = (username: string, role: UserRole) => {
@@ -103,6 +109,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
     setUsers(prev => prev.map(u => u.username === username ? { ...u, role } : u));
     toast({ title: 'Success', description: `Role for "${username}" updated to ${role}.`, duration: 500 });
+    import('@/actions/audit').then(({ writeAuditLog }) =>
+      writeAuditLog('admin', 'USER_ROLE_CHANGE', `Role for "${username}" changed to "${role}"`)
+    );
   };
 
   const deleteUser = (username: string) => {
@@ -112,6 +121,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
     setUsers(prev => prev.filter(u => u.username !== username));
     toast({ title: 'Success', description: `User "${username}" deleted.`, duration: 500 });
+    import('@/actions/audit').then(({ writeAuditLog }) =>
+      writeAuditLog('admin', 'USER_DELETE', `Deleted user "${username}"`)
+    );
   };
 
   const validateUser = (username: string, pass: string) => {

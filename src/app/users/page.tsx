@@ -113,7 +113,7 @@ const UserForm = ({ onSave, onCancel, initialData }: { onSave: (values: UserForm
 
 
 export default function UserManagementPage() {
-  const { user, isAuthenticated, isLoading: isAuthLoading, logout } = useAuth();
+  const { user, isAuthenticated, isAdmin, isLoading: isAuthLoading, logout } = useAuth();
   const { users, addUser, updateUser, updateUserRole, deleteUser } = useUser();
   const [roleDialogUser, setRoleDialogUser] = useState<User | null>(null);
   const [pendingRole, setPendingRole] = useState<UserRole>('viewer');
@@ -123,14 +123,14 @@ export default function UserManagementPage() {
 
   useEffect(() => {
     if (!isAuthLoading) {
-        if (!isAuthenticated || user?.username !== 'admin') {
+        if (!isAuthenticated || !isAdmin) {
             router.push('/');
         }
     }
-  }, [user, isAuthenticated, isAuthLoading, router]);
+  }, [isAdmin, isAuthenticated, isAuthLoading, router]);
 
 
-  if (isAuthLoading || user?.username !== 'admin') {
+  if (isAuthLoading || !isAdmin) {
     return (
       <div className="w-screen h-screen flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

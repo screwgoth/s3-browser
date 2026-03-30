@@ -43,6 +43,7 @@ next-env.d.ts
 
 # database
 *.sql
+!scripts/schema.sql
 backup_*.sql
 
 # firebase

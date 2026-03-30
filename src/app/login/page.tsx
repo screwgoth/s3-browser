@@ -19,6 +19,7 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { SiteLogo } from "@/components/site-logo";
 
 const formSchema = z.object({
   username: z.string().min(1, { message: "Username is required." }),
@@ -68,7 +69,12 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-blue-950 dark:to-indigo-950">
+    <main className="min-h-screen flex flex-col items-center justify-center p-4 skeu-bg">
+      {/* Site Logo */}
+      <div className="mb-6 flex flex-col items-center gap-3">
+        <SiteLogo size="lg" />
+      </div>
+
       {/* 3D ASCII Art Title */}
       <div className="mb-8 text-center">
         <pre className="text-[9px] sm:text-[11px] md:text-sm font-mono font-bold leading-tight select-none">
@@ -95,8 +101,8 @@ export default function LoginPage() {
         </pre>
       </div>
 
-      <Card className="w-full max-w-sm shadow-2xl border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
-        <CardHeader className="space-y-1 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 rounded-t-lg border-b">
+      <Card className="w-full max-w-sm skeu-login-card border-0">
+        <CardHeader className="space-y-1 rounded-t-2xl border-b bg-gradient-to-b from-white/80 to-slate-50/80">
           <CardTitle className="text-2xl font-bold text-center">Login</CardTitle>
           <CardDescription className="text-center">Enter your credentials to continue</CardDescription>
         </CardHeader>
@@ -150,9 +156,9 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
-              <Button 
-                type="submit" 
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg" 
+              <Button
+                type="submit"
+                className="w-full skeu-btn border-0"
                 disabled={isLoading}
               >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

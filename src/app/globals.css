@@ -8,48 +8,48 @@ body {
 
 @layer base {
   :root {
-    --background: 220 13% 96.1%; /* Off-white #F5F5F5 */
-    --foreground: 210 12% 20%;
+    --background: 220 20% 92%;
+    --foreground: 210 25% 18%;
     --card: 0 0% 100%;
-    --card-foreground: 210 12% 20%;
+    --card-foreground: 210 25% 18%;
     --popover: 0 0% 100%;
-    --popover-foreground: 210 12% 20%;
-    --primary: 195 53% 79%; /* Light blue #ADD8E6 */
-    --primary-foreground: 210 12% 10%;
-    --secondary: 220 14% 90%;
-    --secondary-foreground: 210 12% 20%;
-    --muted: 220 14% 93%;
+    --popover-foreground: 210 25% 18%;
+    --primary: 204 60% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 85%;
+    --secondary-foreground: 210 25% 18%;
+    --muted: 220 14% 88%;
     --muted-foreground: 210 9% 45%;
-    --accent: 204 47% 53%; /* Darker blue #4682B4 */
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 84.2% 60.2%;
+    --accent: 204 60% 38%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 204 47% 53%;
-    --radius: 0.5rem;
+    --border: 220 15% 78%;
+    --input: 220 15% 88%;
+    --ring: 204 60% 45%;
+    --radius: 0.6rem;
   }
 
   .dark {
-    --background: 210 12% 10%;
-    --foreground: 0 0% 98%;
-    --card: 210 12% 10%;
-    --card-foreground: 0 0% 98%;
-    --popover: 210 12% 10%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 204 47% 53%; /* Darker blue */
-    --primary-foreground: 0 0% 98%;
-    --secondary: 220 13% 18%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 220 13% 18%;
+    --background: 210 18% 12%;
+    --foreground: 0 0% 95%;
+    --card: 210 18% 16%;
+    --card-foreground: 0 0% 95%;
+    --popover: 210 18% 16%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 204 60% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 13% 22%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 220 13% 20%;
     --muted-foreground: 210 9% 60%;
-    --accent: 195 53% 79%; /* Light blue */
-    --accent-foreground: 210 12% 10%;
-    --destructive: 0 62.8% 30.6%;
+    --accent: 195 53% 65%;
+    --accent-foreground: 210 18% 12%;
+    --destructive: 0 55% 40%;
     --destructive-foreground: 0 0% 98%;
-    --border: 220 13% 22%;
-    --input: 220 13% 22%;
-    --ring: 204 47% 53%;
+    --border: 220 13% 28%;
+    --input: 220 13% 24%;
+    --ring: 204 60% 55%;
   }
 }
 
@@ -59,5 +59,118 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* ── Skeuomorphism Design System ── */
+@layer components {
+
+  /* Page background — brushed linen texture feel */
+  .skeu-bg {
+    background-color: #dde3ec;
+    background-image:
+      linear-gradient(135deg, #e8edf5 25%, transparent 25%),
+      linear-gradient(225deg, #dde3ec 25%, transparent 25%),
+      linear-gradient(45deg,  #dde3ec 25%, transparent 25%),
+      linear-gradient(315deg, #e8edf5 25%, #dde3ec 25%);
+    background-size: 4px 4px;
+  }
+
+  /* Card — raised, beveled look */
+  .skeu-card,
+  .skeu-card.border {
+    background: linear-gradient(160deg, #ffffff 0%, #f0f4fa 100%);
+    border: 1px solid #b8c4d8;
+    border-top-color: #d8e2f0;
+    border-left-color: #d8e2f0;
+    border-bottom-color: #8fa0bc;
+    border-right-color: #8fa0bc;
+    box-shadow:
+      0 1px 0 0 rgba(255,255,255,0.8) inset,
+      0 -1px 0 0 rgba(0,0,0,0.08) inset,
+      0 4px 12px rgba(0,0,0,0.12),
+      0 1px 3px rgba(0,0,0,0.08);
+    border-radius: 12px;
+  }
+
+  /* Header bar — brushed metal */
+  .skeu-header {
+    background: linear-gradient(180deg, #e8eef8 0%, #d0daea 50%, #c8d2e6 100%);
+    border-bottom: 1px solid #a0aec0;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.7) inset,
+      0 2px 6px rgba(0,0,0,0.12);
+  }
+
+  /* Button — tactile, pressable */
+  .skeu-btn {
+    background: linear-gradient(180deg, #5b9bd5 0%, #3b7ec8 50%, #2c6db8 100%);
+    border: 1px solid #2059a0;
+    border-bottom: 2px solid #1a4a8a;
+    color: white;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.3);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.25) inset,
+      0 3px 6px rgba(0,0,0,0.2);
+    border-radius: 8px;
+    transition: all 0.1s ease;
+  }
+  .skeu-btn:hover {
+    background: linear-gradient(180deg, #6baae0 0%, #4b8ed8 50%, #3c7dc8 100%);
+  }
+  .skeu-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+
+  /* Input fields — inset/recessed look */
+  .skeu-input input,
+  .skeu-input {
+    background: linear-gradient(180deg, #e8edf5 0%, #f5f7fb 100%);
+    border: 1px solid #9ab0cc;
+    border-top-color: #7090b0;
+    box-shadow:
+      0 2px 4px rgba(0,0,0,0.1) inset,
+      0 1px 0 rgba(255,255,255,0.6);
+    border-radius: 6px;
+  }
+
+  /* Table — ledger paper feel */
+  .skeu-table thead tr {
+    background: linear-gradient(180deg, #dde5f2 0%, #ccd5e8 100%);
+    border-bottom: 2px solid #a0b0cc;
+  }
+  .skeu-table tbody tr:nth-child(even) {
+    background: rgba(255,255,255,0.5);
+  }
+  .skeu-table tbody tr:nth-child(odd) {
+    background: rgba(210,220,235,0.3);
+  }
+  .skeu-table tbody tr:hover {
+    background: rgba(180,200,230,0.4);
+  }
+
+  /* Login card — thick, embossed */
+  .skeu-login-card {
+    background: linear-gradient(160deg, #ffffff 0%, #edf2fa 100%);
+    border: 1px solid #b0c4dc;
+    border-top-color: #e0eaf8;
+    border-left-color: #e0eaf8;
+    border-bottom-color: #7898bc;
+    border-right-color: #7898bc;
+    box-shadow:
+      0 2px 0 rgba(255,255,255,0.9) inset,
+      0 -1px 0 rgba(0,0,0,0.08) inset,
+      0 8px 24px rgba(0,0,0,0.18),
+      0 2px 6px rgba(0,0,0,0.1);
+    border-radius: 16px;
+  }
+
+  /* Badge pills — embossed */
+  .skeu-badge {
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.6) inset,
+      0 1px 3px rgba(0,0,0,0.15);
+    border: 1px solid rgba(0,0,0,0.1);
   }
 }

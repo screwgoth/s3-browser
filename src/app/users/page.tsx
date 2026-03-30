@@ -9,16 +9,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash, LogOut, HardDrive, Loader2, Users, Key, ShieldCheck } from 'lucide-react';
+import { Plus, Trash, Loader2, Users, Key, ShieldCheck } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import Link from 'next/link';
+import { AppSidebar } from '@/components/app-sidebar';
 
 const roleBadgeClass: Record<UserRole, string> = {
   viewer: 'bg-gray-100 text-gray-700',
@@ -113,7 +113,7 @@ const UserForm = ({ onSave, onCancel, initialData }: { onSave: (values: UserForm
 
 
 export default function UserManagementPage() {
-  const { user, isAuthenticated, isAdmin, isLoading: isAuthLoading, logout } = useAuth();
+  const { user, isAuthenticated, isAdmin, isLoading: isAuthLoading } = useAuth();
   const { users, addUser, updateUser, updateUserRole, deleteUser } = useUser();
   const [roleDialogUser, setRoleDialogUser] = useState<User | null>(null);
   const [pendingRole, setPendingRole] = useState<UserRole>('viewer');
@@ -165,19 +165,9 @@ export default function UserManagementPage() {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    router.push('/login');
-  };
-
   return (
-    <div className="min-h-screen bg-background">
-       <header className="p-4 border-b flex justify-between items-center">
-        <h1 className="text-2xl font-headline flex items-center gap-2"><Link href="/" passHref><Button variant="ghost" className="text-2xl"><HardDrive/> S3 Navigator</Button></Link></h1>
-        <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4" /> Logout</Button>
-        </div>
-      </header>
+    <div className="min-h-screen skeu-bg">
+      <AppSidebar title="User Management" titleIcon={<Users className="h-5 w-5" />} />
       <main className="p-4 md:p-8">
       <Card className="w-full max-w-4xl mx-auto">
         <CardHeader className="flex flex-row justify-between items-center">
@@ -192,6 +182,7 @@ export default function UserManagementPage() {
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>{editingUser ? `Reset Password for ${editingUser.username}` : 'Add New User'}</DialogTitle>
+                <DialogDescription>{editingUser ? 'Update the password for this user.' : 'Create a new user account and assign a role.'}</DialogDescription>
               </DialogHeader>
               <UserForm 
                 onSave={handleSave} 
@@ -273,6 +264,7 @@ export default function UserManagementPage() {
         <DialogContent className="sm:max-w-[360px]">
           <DialogHeader>
             <DialogTitle>Change Role — {roleDialogUser?.username}</DialogTitle>
+            <DialogDescription>Select a new role for this user. Changes take effect immediately.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <Select value={pendingRole} onValueChange={(v) => setPendingRole(v as UserRole)}>

@@ -9,7 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, User as UserIcon, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, User as UserIcon } from 'lucide-react';
+import { AppSidebar } from '@/components/app-sidebar';
 
 export default function ProfilePage() {
   const { user, isLoading, logout } = useAuth();
@@ -93,19 +94,8 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="p-4 border-b">
-        <div className="container mx-auto flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.push('/')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Buckets
-          </Button>
-          <h1 className="text-2xl font-headline flex items-center gap-2">
-            <UserIcon className="h-6 w-6" />
-            Profile
-          </h1>
-        </div>
-      </header>
+    <div className="min-h-screen skeu-bg">
+      <AppSidebar title="Profile" titleIcon={<UserIcon className="h-5 w-5" />} />
 
       <main className="container mx-auto p-6 max-w-2xl">
         <div className="space-y-6">

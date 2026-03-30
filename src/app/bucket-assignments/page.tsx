@@ -10,9 +10,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, UserPlus } from 'lucide-react';
+import { Trash2, UserPlus, Shield } from 'lucide-react';
 import type { UserRole } from '@/context/UserContext';
 import { writeAuditLog } from '@/actions/audit';
+import { AppSidebar } from '@/components/app-sidebar';
 
 const roleBadgeClass: Record<UserRole, string> = {
   viewer: 'bg-gray-100 text-gray-700',
@@ -77,12 +78,9 @@ export default function BucketAssignmentsPage() {
   };
 
   return (
+    <div className="min-h-screen skeu-bg">
+    <AppSidebar title="Bucket Assignments" titleIcon={<Shield className="h-5 w-5" />} />
     <div className="container mx-auto p-6 max-w-6xl">
-      <div className="mb-6">
-        <Button onClick={() => router.push('/')} variant="outline">
-          ← Back to Buckets
-        </Button>
-      </div>
 
       <Card className="mb-8">
         <CardHeader>
@@ -202,5 +200,7 @@ export default function BucketAssignmentsPage() {
         )}
       </div>
     </div>
+    </div>
   );
 }
+

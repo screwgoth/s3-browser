@@ -17,7 +17,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { SiteLogo } from "@/components/site-logo";
 
@@ -32,7 +31,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
-  const { login } = useAuth();
   const router = useRouter();
 
   const form = useForm<LoginFormValues>({
@@ -45,25 +43,47 @@ export default function LoginPage() {
 
   async function onSubmit(values: LoginFormValues) {
     setIsLoading(true);
-    const success = login(values.username, values.password);
     
-    if (success) {
-      toast({
-        title: "Login Successful",
-        description: "Welcome back!",
-        duration: 500,
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
       });
-      // Delay navigation slightly to allow state to propagate
-      setTimeout(() => {
-        router.push("/");
-        setIsLoading(false);
-      }, 300);
-    } else {
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Login Successful",
+          description: "Welcome back!",
+          duration: 1000,
+        });
+
+        // Check if password change is required
+        if (data.user.must_change_password) {
+          setTimeout(() => {
+            router.push("/change-password");
+          }, 500);
+        } else {
+          setTimeout(() => {
+            router.push("/");
+          }, 500);
+        }
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Login Failed",
+          description: data.error || "Invalid username or password.",
+        });
+      }
+    } catch (error) {
       toast({
         variant: "destructive",
-        title: "Login Failed",
-        description: "Invalid username or password.",
+        title: "Error",
+        description: "An error occurred. Please try again.",
       });
+    } finally {
       setIsLoading(false);
     }
   }
@@ -119,6 +139,7 @@ export default function LoginPage() {
                       <Input 
                         placeholder="Enter username" 
                         {...field}
+                        autoComplete="username"
                         className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800"
                       />
                     </FormControl>
@@ -137,6 +158,7 @@ export default function LoginPage() {
                         <Input
                           type={showPassword ? "text" : "password"}
                           placeholder="Enter password"
+                          autoComplete="current-password"
                           {...field}
                           className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800"
                         />
@@ -172,6 +194,7 @@ export default function LoginPage() {
       {/* Subtle footer text */}
       <div className="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">
         <p>Secure S3 Bucket Management</p>
+        <p className="text-xs mt-1">Default: admin / admin (change password on first login)</p>
       </div>
     </main>
   );

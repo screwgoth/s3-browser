@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   role VARCHAR(20) NOT NULL DEFAULT 'viewer',
   is_active BOOLEAN DEFAULT true,
+  must_change_password BOOLEAN DEFAULT false,
+  last_password_change TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

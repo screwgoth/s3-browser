@@ -38,10 +38,10 @@ async function seed() {
 
     console.log('👤 Creating admin user...');
     const result = await client.query(
-      `INSERT INTO users (username, password_hash, role) 
-       VALUES ($1, $2, $3) 
-       RETURNING id, username, role`,
-      [DEFAULT_USERNAME, passwordHash, 'admin']
+      `INSERT INTO users (username, password_hash, role, must_change_password) 
+       VALUES ($1, $2, $3, $4) 
+       RETURNING id, username, role, must_change_password`,
+      [DEFAULT_USERNAME, passwordHash, 'admin', true]
     );
 
     const user = result.rows[0];
@@ -49,6 +49,7 @@ async function seed() {
     console.log(`   ID: ${user.id}`);
     console.log(`   Username: ${user.username}`);
     console.log(`   Role: ${user.role}`);
+    console.log(`   Must Change Password: ${user.must_change_password}`);
 
     console.log('\n📝 Creating default app settings...');
     await client.query(

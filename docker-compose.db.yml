@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: s3-browser-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: s3browser
+      POSTGRES_USER: s3admin
+      POSTGRES_PASSWORD: s3secure_password_change_me
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - s3-browser-db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U s3admin -d s3browser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: s3-browser-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@s3browser.local
+      PGADMIN_DEFAULT_PASSWORD: admin_change_me
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    ports:
+      - "5050:80"
+    networks:
+      - s3-browser-db
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  s3-browser-db:
+    driver: bridge

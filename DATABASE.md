@@ -22,7 +22,22 @@ Copy the example environment file:
 cp .env.example .env
 ```
 
-Edit `.env` and update the `DATABASE_URL` if you changed the default credentials.
+Generate secure keys:
+
+```bash
+npm run generate-keys
+```
+
+This will generate:
+- `NEXTAUTH_SECRET` - For session management
+- `ENCRYPTION_KEY` - For encrypting AWS credentials
+
+Copy the generated keys into your `.env` file.
+
+**Important:**
+- Keep `ENCRYPTION_KEY` secure - if lost, encrypted AWS credentials cannot be recovered
+- Never commit `.env` to git
+- Use a password manager or secrets manager in production
 
 ### 3. Run Database Migrations
 

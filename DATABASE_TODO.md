@@ -4,6 +4,7 @@ This document tracks remaining tasks to fully migrate from localStorage to Postg
 
 ## ✅ Completed
 
+### Phase 1: Authentication
 - [x] Database schema design
 - [x] Docker Compose setup for PostgreSQL + pgAdmin
 - [x] Migration scripts (schema.sql)
@@ -12,72 +13,72 @@ This document tracks remaining tasks to fully migrate from localStorage to Postg
 - [x] Management script (`db.sh`)
 - [x] Documentation (DATABASE.md, MIGRATION_GUIDE.md)
 - [x] Updated package.json with dependencies
+- [x] User authentication (login/logout)
+- [x] Forced password change on first login
+- [x] Password strength validation
+- [x] Session management with cookies
+- [x] Middleware protection
+- [x] Audit logging for auth events
+- [x] `src/lib/auth.ts` - Authentication utilities
+- [x] `src/lib/users.ts` - User CRUD operations
+- [x] `src/lib/audit.ts` - Audit logging system
+- [x] `src/app/api/auth/login/route.ts`
+- [x] `src/app/api/auth/logout/route.ts`
+- [x] `src/app/api/auth/session/route.ts`
+- [x] `src/app/api/auth/change-password/route.ts`
+- [x] `src/app/change-password/page.tsx`
+- [x] Updated `src/app/login/page.tsx`
+- [x] `src/middleware.ts`
 
-## 🔄 In Progress
+### Phase 2: Bucket Management
+- [x] Bucket CRUD operations in database
+- [x] AES-256-GCM encryption for AWS credentials
+- [x] Encryption key management
+- [x] `src/lib/encryption.ts` - Credential encryption
+- [x] `src/lib/buckets.ts` - Bucket CRUD operations
+- [x] `src/app/api/buckets/route.ts` (list, create)
+- [x] `src/app/api/buckets/[id]/route.ts` (get, update, delete)
+- [x] `src/context/BucketContext.new.tsx` - Database-powered context
+- [x] `scripts/migrate-localstorage.js` - Migration script
+- [x] `scripts/generate-keys.js` - Key generation
+- [x] Audit logging for bucket operations
+- [x] Permission checks (role-based)
 
-### Core Database Operations
+## 🔄 In Progress - Phase 3
 
-- [ ] **User Management**
-  - [ ] Replace localStorage auth in `src/context/AuthContext.tsx`
-  - [ ] Create `src/lib/users.ts` with user CRUD operations
-  - [ ] Implement password hashing with bcrypt
-  - [ ] Create user login API endpoint
-  - [ ] Create user registration API endpoint
-  - [ ] Update `src/app/users/page.tsx` to use database
+### User Management UI
+- [ ] Update `src/context/AuthContext.tsx` to use database
+- [ ] Create `src/app/api/users/route.ts` (list, create)
+- [ ] Create `src/app/api/users/[id]/route.ts` (get, update, delete)
+- [ ] Update `src/app/users/page.tsx` to use database
+- [ ] User creation form with role selection
+- [ ] User editing (role change, activation toggle)
+- [ ] User deletion with confirmation
 
-- [ ] **Bucket Management**
-  - [ ] Replace localStorage in `src/context/BucketContext.tsx`
-  - [ ] Create `src/lib/buckets.ts` with bucket CRUD operations
-  - [ ] Encrypt AWS credentials before storing (use crypto module)
-  - [ ] Update bucket actions to use database
-  - [ ] Migrate `src/app/bucket-assignments/page.tsx` to database
+### Bucket UI Integration
+- [ ] Replace old BucketContext with BucketContext.new.tsx
+- [ ] Update all components using bucket context
+- [ ] Test bucket CRUD in UI
+- [ ] Update S3 browser component to use database buckets
 
-- [ ] **Session Management**
-  - [ ] Implement session tokens (replace localStorage sessions)
-  - [ ] Create middleware for authentication checks
-  - [ ] Add session cleanup (expire old sessions)
+### Bucket Assignments
+- [ ] Migrate `src/app/bucket-assignments/page.tsx` to database
+- [ ] Update bucket sharing UI
+- [ ] Permission management UI
 
-- [ ] **Audit Logging**
-  - [ ] Hook audit logging into all operations
-  - [ ] Update `src/app/admin/audit/page.tsx` to read from database
-  - [ ] Add audit log search/filtering
+### Audit Trail UI
+- [ ] Update `src/app/admin/audit/page.tsx` to read from database
+- [ ] Add audit log search/filtering
+- [ ] Add date range filters
+- [ ] Export audit logs (CSV/JSON)
 
-### Security
+## 📋 Remaining Tasks
 
-- [ ] **Credential Encryption**
-  - [ ] Implement AES-256 encryption for AWS credentials
-  - [ ] Store encryption key in environment variable
-  - [ ] Encrypt/decrypt transparently in bucket operations
-
-- [ ] **Password Security**
-  - [ ] Ensure bcrypt is used for all password operations
-  - [ ] Add password strength requirements
-  - [ ] Implement password reset functionality
-
-- [ ] **Session Security**
-  - [ ] Add CSRF protection
-  - [ ] Implement session timeout (configurable)
-  - [ ] Add "Remember Me" functionality (optional)
-
-### Data Migration
-
-- [ ] **localStorage → PostgreSQL Migration Script**
-  - [ ] Create `scripts/migrate-from-localstorage.js`
-  - [ ] Extract users from localStorage
-  - [ ] Extract buckets from localStorage
-  - [ ] Import into PostgreSQL
-  - [ ] Provide migration UI or CLI command
-
-### API Endpoints
-
-Create new API routes for database operations:
-
-- [ ] `src/app/api/auth/login/route.ts`
-- [ ] `src/app/api/auth/logout/route.ts`
-- [ ] `src/app/api/auth/session/route.ts`
-- [ ] `src/app/api/users/route.ts` (list, create)
-- [ ] `src/app/api/users/[id]/route.ts` (get, update, delete)
-- [ ] `src/app/api/buckets/route.ts` (list, create)
+### Security Enhancements
+- [ ] Add CSRF protection
+- [ ] Implement session timeout (configurable)
+- [ ] Add "Remember Me" functionality (optional)
+- [ ] Password reset functionality
 - [ ] `src/app/api/buckets/[id]/route.ts` (get, update, delete)
 - [ ] `src/app/api/audit/route.ts` (list logs)
 - [ ] `src/app/api/settings/route.ts` (get/set app settings)

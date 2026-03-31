@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "db:migrate": "node scripts/migrate.js",
     "db:seed": "node scripts/seed.js",
-    "db:reset": "node scripts/reset.js"
+    "db:reset": "node scripts/reset.js",
+    "generate-keys": "node scripts/generate-keys.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.583.0",

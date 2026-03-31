@@ -9,6 +9,20 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // Fix for @mapbox/node-pre-gyp module type error
+  webpack: (config, { isServer }) => {
+    // Ignore .html files in node_modules
+    config.module.rules.push({
+      test: /\.html$/,
+      type: 'asset/source',
+    });
+    return config;
+  },
+  // Exclude problematic packages from Turbopack
+  transpilePackages: [],
+  experimental: {
+    serverComponentsExternalPackages: ['@mapbox/node-pre-gyp'],
+  },
   images: {
     remotePatterns: [
       {

@@ -20,9 +20,13 @@ const nextConfig: NextConfig = {
   },
   // Exclude problematic packages from Turbopack
   transpilePackages: [],
-  experimental: {
-    serverComponentsExternalPackages: ['@mapbox/node-pre-gyp'],
-  },
+  // Exclude server-only packages from client bundle
+  serverExternalPackages: [
+    '@mapbox/node-pre-gyp',
+    'bcrypt',
+    'pg',
+    'pg-native',
+  ],
   images: {
     remotePatterns: [
       {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { validateSession } from './lib/auth';
+import { validateSessionMiddleware } from './lib/auth-middleware';
 
 // Routes that don't require authentication
 const publicRoutes = ['/login', '/api/auth/login'];
@@ -28,7 +28,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Validate session
-  const user = await validateSession(sessionToken);
+  const user = await validateSessionMiddleware(sessionToken);
 
   if (!user) {
     // Invalid session - redirect to login
@@ -75,4 +75,6 @@ export const config = {
      */
     '/((?!_next/static|_next/image|favicon.ico|.*\\..*|public).*)',
   ],
+  // Use Node.js runtime instead of Edge (allows database connections)
+  runtime: 'nodejs',
 };

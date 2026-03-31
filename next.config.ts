@@ -20,12 +20,15 @@ const nextConfig: NextConfig = {
   },
   // Exclude problematic packages from Turbopack
   transpilePackages: [],
-  // Exclude server-only packages from client bundle
+  // Exclude server-only packages from client bundle and edge runtime
   serverExternalPackages: [
     '@mapbox/node-pre-gyp',
+    '@mswjs/interceptors',
     'bcrypt',
+    'nock',
     'pg',
     'pg-native',
+    'mock-aws-s3',
   ],
   images: {
     remotePatterns: [

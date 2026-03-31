@@ -63,11 +63,11 @@ export default function LoginPage() {
         // Check if password change is required
         if (data.user.must_change_password) {
           setTimeout(() => {
-            router.push("/change-password");
+            window.location.href = "/change-password";
           }, 500);
         } else {
           setTimeout(() => {
-            router.push("/");
+            window.location.href = "/";
           }, 500);
         }
       } else {

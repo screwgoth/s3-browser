@@ -33,7 +33,14 @@ export default function HomePage() {
   const [view, setView] = useState<ViewType>('card');
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    // Check for session cookie (new database auth)
+    const hasSessionCookie = document.cookie.includes('session_token=');
+    console.log("[HOME] Auth check - isAuthenticated:", isAuthenticated, "hasSessionCookie:", hasSessionCookie);
+    
+    // If we have a session cookie, we're logged in (database auth)
+    // Don't redirect even if old AuthContext says not authenticated
+    if (!hasSessionCookie && !isLoading && !isAuthenticated) {
+      console.log("[HOME] No session, redirecting to login");
       router.push('/login');
     }
   }, [isAuthenticated, isLoading, router]);
@@ -46,7 +53,11 @@ export default function HomePage() {
     );
   }
 
-  if (!isAuthenticated) {
+  // Check for session cookie (database auth)
+  const hasSessionCookie = typeof document !== 'undefined' && document.cookie.includes('session_token=');
+  
+  if (!hasSessionCookie && !isAuthenticated) {
+    console.log("[HOME] Rendering login page");
     return <LoginPage />;
   }
   

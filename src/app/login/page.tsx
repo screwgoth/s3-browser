@@ -60,13 +60,19 @@ export default function LoginPage() {
           duration: 1000,
         });
 
+        console.log("[LOGIN] Login successful, user:", data.user);
+
         // Check if password change is required
         if (data.user.must_change_password) {
+          console.log("[LOGIN] Password change required, redirecting to /change-password");
           setTimeout(() => {
+            console.log("[LOGIN] Executing redirect to /change-password");
             window.location.href = "/change-password";
           }, 500);
         } else {
+          console.log("[LOGIN] No password change needed, redirecting to /");
           setTimeout(() => {
+            console.log("[LOGIN] Executing redirect to /");
             window.location.href = "/";
           }, 500);
         }

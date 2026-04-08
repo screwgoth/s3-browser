@@ -34,22 +34,45 @@ function getS3Client(config: S3Config): S3Client {
 
 export async function listObjects(
   config: Bucket,
-  prefix: string
-): Promise<{ folders: { Prefix: string }[]; files: { Key?: string; LastModified?: Date; Size?: number }[] }> {
+  prefix: string,
+  options?: { limit?: number; continuationToken?: string }
+): Promise<{
+  folders: { Prefix: string }[];
+  files: { Key?: string; LastModified?: Date; Size?: number }[];
+  nextContinuationToken?: string;
+  isComplete: boolean;
+}> {
   const s3Client = getS3Client(config);
-  const command = new ListObjectsV2Command({
-    Bucket: config.bucket,
-    Prefix: prefix,
-    Delimiter: "/",
-  });
-  const response = await s3Client.send(command);
-  const folders = (response.CommonPrefixes || []).filter(p => p.Prefix) as { Prefix: string }[];
-  const files = (response.Contents || []).filter(c => c.Key !== prefix && (c.Size ?? 0) > 0).map(c => ({
-    Key: c.Key,
-    LastModified: c.LastModified,
-    Size: c.Size,
-  }));
-  return { folders, files };
+  const folders: { Prefix: string }[] = [];
+  const files: { Key?: string; LastModified?: Date; Size?: number }[] = [];
+  let continuationToken: string | undefined = options?.continuationToken;
+
+  do {
+    const command = new ListObjectsV2Command({
+      Bucket: config.bucket,
+      Prefix: prefix,
+      Delimiter: "/",
+      ContinuationToken: continuationToken,
+      ...(options?.limit !== undefined ? { MaxKeys: options.limit } : {}),
+    });
+    const response = await s3Client.send(command);
+
+    for (const p of response.CommonPrefixes || []) {
+      if (p.Prefix) folders.push({ Prefix: p.Prefix });
+    }
+    for (const c of response.Contents || []) {
+      if (c.Key !== prefix && (c.Size ?? 0) > 0) {
+        files.push({ Key: c.Key, LastModified: c.LastModified, Size: c.Size });
+      }
+    }
+
+    continuationToken = response.NextContinuationToken;
+
+    // When a limit is set, only fetch one page then return
+    if (options?.limit !== undefined) break;
+  } while (continuationToken);
+
+  return { folders, files, nextContinuationToken: continuationToken, isComplete: !continuationToken };
 }
 
 export async function validateS3Connection(config: S3Config): Promise<{ success: boolean; message: string }> {

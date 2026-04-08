@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatBytes } from "@/lib/utils";
-import { Folder, File, HardDrive, LogOut, Home, Loader2, FileImage, FileText, Music, Video, Search, Download, Upload } from "lucide-react";
+import { Folder, File, HardDrive, LogOut, Home, Loader2, FileImage, FileText, Music, Video, Search, Download, Upload, ChevronsLeft, ChevronsRight } from "lucide-react";
 import ObjectDetails from "./object-details";
 import UploadDialog from "./upload-dialog";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
@@ -85,6 +85,9 @@ export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [sortOrder, setSortOrder] = useState<'none' | 'newest' | 'oldest'>('none');
+  const [goToPage, setGoToPage] = useState('');
 
   // Reset prefix if config changes
   useEffect(() => {
@@ -93,13 +96,32 @@ export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
 
   const fetchItems = useCallback(async (currentPrefix: string) => {
     setIsLoading(true);
+    setIsLoadingMore(false);
+    setItems([]);
 
     try {
-      const result = await listObjects(config, currentPrefix);
-      const folderItems: S3Item[] = result.folders.map(p => ({ ...p, type: "folder" as const }));
-      const fileItems: S3Item[] = result.files.map(c => ({ ...c, type: "file" as const }));
+      // Fast first paint: fetch up to 100 items immediately
+      const firstResult = await listObjects(config, currentPrefix, { limit: 100 });
+      const folderItems: S3Item[] = firstResult.folders.map(p => ({ ...p, type: "folder" as const }));
+      const fileItems: S3Item[] = firstResult.files.map(c => ({ ...c, type: "file" as const }));
       setItems([...folderItems, ...fileItems]);
-      setSelectedKeys(new Set()); // Clear selection on navigation
+      setSelectedKeys(new Set());
+      setIsLoading(false);
+
+      // If there are more items, fetch the rest in the background
+      if (!firstResult.isComplete) {
+        setIsLoadingMore(true);
+        try {
+          const restResult = await listObjects(config, currentPrefix, {
+            continuationToken: firstResult.nextContinuationToken,
+          });
+          const moreFolders: S3Item[] = restResult.folders.map(p => ({ ...p, type: "folder" as const }));
+          const moreFiles: S3Item[] = restResult.files.map(c => ({ ...c, type: "file" as const }));
+          setItems(prev => [...prev, ...moreFolders, ...moreFiles]);
+        } finally {
+          setIsLoadingMore(false);
+        }
+      }
     } catch (e: any) {
       const description = e.message || "Failed to fetch bucket contents. Please check credentials and bucket name.";
       toast({
@@ -109,9 +131,8 @@ export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
         duration: 5000,
       });
       console.error(e);
-      onDisconnect();
-    } finally {
       setIsLoading(false);
+      onDisconnect();
     }
   }, [config, toast, onDisconnect]);
 
@@ -210,16 +231,27 @@ export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
     });
   }, [items, searchQuery, prefix]);
 
+  const sortedItems = useMemo(() => {
+    if (sortOrder === 'none') return filteredItems;
+    return [...filteredItems].sort((a, b) => {
+      if (a.type === 'folder' && b.type !== 'folder') return -1;
+      if (a.type !== 'folder' && b.type === 'folder') return 1;
+      const dateA = (a as _Object).LastModified?.getTime() ?? 0;
+      const dateB = (b as _Object).LastModified?.getTime() ?? 0;
+      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+    });
+  }, [filteredItems, sortOrder]);
+
   // Pagination logic
-  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedItems.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedItems = filteredItems.slice(startIndex, endIndex);
+  const paginatedItems = sortedItems.slice(startIndex, endIndex);
 
-  // Reset to first page when search query, prefix, or items per page changes
+  // Reset to first page when search query, prefix, items per page, or sort order changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, prefix, itemsPerPage]);
+  }, [searchQuery, prefix, itemsPerPage, sortOrder]);
 
   const areAllVisibleSelected = paginatedItems.length > 0 && selectedKeys.size === paginatedItems.length && paginatedItems.every(item => selectedKeys.has((item.type === 'folder' ? (item as CommonPrefix).Prefix : (item as _Object).Key)!));
   const isAnyVisibleSelected = paginatedItems.some(item => selectedKeys.has((item.type === 'folder' ? (item as CommonPrefix).Prefix : (item as _Object).Key)!));
@@ -277,6 +309,16 @@ export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
               Download Selected ({selectedKeys.size})
             </Button>
           )}
+          <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as 'none' | 'newest' | 'oldest')}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="Sort order" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Default order</SelectItem>
+              <SelectItem value="newest">Newest first</SelectItem>
+              <SelectItem value="oldest">Oldest first</SelectItem>
+            </SelectContent>
+          </Select>
           <div className="relative w-full md:w-64">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -368,14 +410,21 @@ export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
       </CardContent>
 
       {/* Pagination Controls */}
-      {filteredItems.length > 10 && (
+      {(sortedItems.length > 10 || isLoadingMore) && (
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 py-3 border-t gap-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div className="text-sm text-muted-foreground">
-              Showing {startIndex + 1} to {Math.min(endIndex, filteredItems.length)} of {filteredItems.length} items
+            <div className="text-sm text-muted-foreground flex items-center gap-2">
+              {sortedItems.length > 0
+                ? `Showing ${startIndex + 1}–${Math.min(endIndex, sortedItems.length)} of ${sortedItems.length} items`
+                : 'Loading…'}
+              {isLoadingMore && (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" /> loading more…
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Items per page:</span>
+              <span className="text-sm text-muted-foreground">Per page:</span>
               <Select value={itemsPerPage.toString()} onValueChange={(value: string) => setItemsPerPage(parseInt(value))}>
                 <SelectTrigger className="w-20">
                   <SelectValue />
@@ -390,71 +439,117 @@ export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
             </div>
           </div>
           {totalPages > 1 && (
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (currentPage > 1) {
-                        setCurrentPage(currentPage - 1);
-                      }
-                    }}
-                    className={currentPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                  />
-                </PaginationItem>
-
-                {/* Page numbers */}
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = currentPage - 2 + i;
-                  }
-
-                  return (
-                    <PaginationItem key={pageNum}>
-                      <PaginationLink
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setCurrentPage(pageNum);
-                        }}
-                        isActive={currentPage === pageNum}
-                        className="cursor-pointer"
-                      >
-                        {pageNum}
-                      </PaginationLink>
-                    </PaginationItem>
-                  );
-                })}
-
-                {totalPages > 5 && currentPage < totalPages - 2 && (
+            <div className="flex items-center gap-2">
+              <Pagination>
+                <PaginationContent>
+                  {/* First page */}
                   <PaginationItem>
-                    <PaginationEllipsis />
+                    <button
+                      onClick={() => setCurrentPage(1)}
+                      disabled={currentPage <= 1}
+                      className="inline-flex items-center justify-center h-9 w-9 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+                      title="First page"
+                    >
+                      <ChevronsLeft className="h-4 w-4" />
+                    </button>
                   </PaginationItem>
-                )}
 
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (currentPage < totalPages) {
-                        setCurrentPage(currentPage + 1);
-                      }
-                    }}
-                    className={currentPage >= totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (currentPage > 1) setCurrentPage(currentPage - 1);
+                      }}
+                      className={currentPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+
+                  {/* Page numbers */}
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    return (
+                      <PaginationItem key={pageNum}>
+                        <PaginationLink
+                          href="#"
+                          onClick={(e) => { e.preventDefault(); setCurrentPage(pageNum); }}
+                          isActive={currentPage === pageNum}
+                          className="cursor-pointer"
+                        >
+                          {pageNum}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  })}
+
+                  {totalPages > 5 && currentPage < totalPages - 2 && (
+                    <PaginationItem><PaginationEllipsis /></PaginationItem>
+                  )}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+                      }}
+                      className={currentPage >= totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+
+                  {/* Last page */}
+                  <PaginationItem>
+                    <button
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={currentPage >= totalPages}
+                      className="inline-flex items-center justify-center h-9 w-9 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+                      title="Last page"
+                    >
+                      <ChevronsRight className="h-4 w-4" />
+                    </button>
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+
+              {/* Go to page */}
+              <div className="flex items-center gap-1">
+                <span className="text-sm text-muted-foreground">Go to</span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={totalPages}
+                  value={goToPage}
+                  onChange={(e) => setGoToPage(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const p = parseInt(goToPage);
+                      if (p >= 1 && p <= totalPages) { setCurrentPage(p); setGoToPage(''); }
+                    }
+                  }}
+                  className="w-16 h-9 text-center"
+                  placeholder={`${currentPage}`}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const p = parseInt(goToPage);
+                    if (p >= 1 && p <= totalPages) { setCurrentPage(p); setGoToPage(''); }
+                  }}
+                >
+                  Go
+                </Button>
+              </div>
+            </div>
           )}
         </div>
       )}

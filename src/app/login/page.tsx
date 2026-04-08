@@ -54,28 +54,23 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (response.ok) {
+        console.log("[LOGIN] Login successful, user:", data.user);
+
+        // Check if password change is required
+        const redirectPath = data.user.must_change_password ? '/change-password' : '/';
+        console.log("[LOGIN] Redirecting to:", redirectPath);
+
         toast({
           title: "Login Successful",
           description: "Welcome back!",
           duration: 1000,
         });
 
-        console.log("[LOGIN] Login successful, user:", data.user);
-
-        // Check if password change is required
-        if (data.user.must_change_password) {
-          console.log("[LOGIN] Password change required, redirecting to /change-password");
-          setTimeout(() => {
-            console.log("[LOGIN] Executing redirect to /change-password");
-            window.location.href = "/change-password";
-          }, 500);
-        } else {
-          console.log("[LOGIN] No password change needed, redirecting to /");
-          setTimeout(() => {
-            console.log("[LOGIN] Executing redirect to /");
-            window.location.href = "/";
-          }, 500);
-        }
+        // Wait for cookie to be set, then redirect
+        setTimeout(() => {
+          console.log("[LOGIN] Executing redirect");
+          router.push(redirectPath);
+        }, 1000);
       } else {
         toast({
           variant: "destructive",

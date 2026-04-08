@@ -31,21 +31,59 @@ export default function HomePage() {
   const [editingBucket, setEditingBucket] = useState<BucketWithPermission | undefined>(undefined);
   const [testingConnectionId, setTestingConnectionId] = useState<string | null>(null);
   const [view, setView] = useState<ViewType>('card');
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const [hasValidSession, setHasValidSession] = useState(false);
 
   useEffect(() => {
-    // Check for session cookie (new database auth)
-    const hasSessionCookie = document.cookie.includes('session_token=');
-    console.log("[HOME] Auth check - isAuthenticated:", isAuthenticated, "hasSessionCookie:", hasSessionCookie);
-    
-    // If we have a session cookie, we're logged in (database auth)
-    // Don't redirect even if old AuthContext says not authenticated
-    if (!hasSessionCookie && !isLoading && !isAuthenticated) {
-      console.log("[HOME] No session, redirecting to login");
-      router.push('/login');
-    }
-  }, [isAuthenticated, isLoading, router]);
+    // Check session validity via API (only once on mount)
+    let mounted = true;
 
-  if (isLoading) {
+    const checkSession = async () => {
+      const hasSessionCookie = document.cookie.includes('session_token=');
+      console.log("[HOME] Auth check - hasSessionCookie:", hasSessionCookie);
+
+      if (!hasSessionCookie) {
+        console.log("[HOME] No session cookie found");
+        if (mounted) {
+          setSessionChecked(true);
+          setHasValidSession(false);
+        }
+        return;
+      }
+
+      try {
+        // Validate session with API
+        const response = await fetch('/api/auth/session');
+        const isValid = response.ok;
+        console.log("[HOME] Session validation result:", isValid);
+
+        if (mounted) {
+          setHasValidSession(isValid);
+          setSessionChecked(true);
+
+          if (!isValid) {
+            console.log("[HOME] Invalid session, redirecting to login");
+            router.push('/login');
+          }
+        }
+      } catch (error) {
+        console.error("[HOME] Session check failed:", error);
+        if (mounted) {
+          setSessionChecked(true);
+          setHasValidSession(false);
+          router.push('/login');
+        }
+      }
+    };
+
+    checkSession();
+
+    return () => {
+      mounted = false;
+    };
+  }, [router]);
+
+  if (!sessionChecked) {
     return (
       <div className="w-screen h-screen flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -53,11 +91,8 @@ export default function HomePage() {
     );
   }
 
-  // Check for session cookie (database auth)
-  const hasSessionCookie = typeof document !== 'undefined' && document.cookie.includes('session_token=');
-  
-  if (!hasSessionCookie && !isAuthenticated) {
-    console.log("[HOME] Rendering login page");
+  if (!hasValidSession) {
+    console.log("[HOME] No valid session, rendering login page");
     return <LoginPage />;
   }
   

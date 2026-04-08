@@ -37,18 +37,31 @@ export async function listObjects(
   prefix: string
 ): Promise<{ folders: { Prefix: string }[]; files: { Key?: string; LastModified?: Date; Size?: number }[] }> {
   const s3Client = getS3Client(config);
-  const command = new ListObjectsV2Command({
-    Bucket: config.bucket,
-    Prefix: prefix,
-    Delimiter: "/",
-  });
-  const response = await s3Client.send(command);
-  const folders = (response.CommonPrefixes || []).filter(p => p.Prefix) as { Prefix: string }[];
-  const files = (response.Contents || []).filter(c => c.Key !== prefix && (c.Size ?? 0) > 0).map(c => ({
-    Key: c.Key,
-    LastModified: c.LastModified,
-    Size: c.Size,
-  }));
+  const folders: { Prefix: string }[] = [];
+  const files: { Key?: string; LastModified?: Date; Size?: number }[] = [];
+  let continuationToken: string | undefined = undefined;
+
+  do {
+    const command = new ListObjectsV2Command({
+      Bucket: config.bucket,
+      Prefix: prefix,
+      Delimiter: "/",
+      ContinuationToken: continuationToken,
+    });
+    const response = await s3Client.send(command);
+
+    for (const p of response.CommonPrefixes || []) {
+      if (p.Prefix) folders.push({ Prefix: p.Prefix });
+    }
+    for (const c of response.Contents || []) {
+      if (c.Key !== prefix && (c.Size ?? 0) > 0) {
+        files.push({ Key: c.Key, LastModified: c.LastModified, Size: c.Size });
+      }
+    }
+
+    continuationToken = response.NextContinuationToken;
+  } while (continuationToken);
+
   return { folders, files };
 }
 

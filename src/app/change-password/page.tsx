@@ -108,7 +108,7 @@ export default function ChangePasswordPage() {
       if (response.ok) {
         setSuccess(true);
         setTimeout(() => {
-          router.push('/');
+          window.location.href = '/';
         }, 2000);
       } else {
         setError(data.error || 'Failed to change password');

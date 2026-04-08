@@ -4,11 +4,20 @@ import type { NextRequest } from 'next/server';
 // Routes that don't require authentication
 const publicRoutes = ['/login', '/api/auth/login'];
 
+// Routes that require authentication but should be accessible even with expired/invalid sessions
+// (for checking session status or forcing password change)
+const authCheckRoutes = ['/api/auth/session', '/api/auth/change-password', '/change-password'];
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow public routes
   if (publicRoutes.some((route) => pathname.startsWith(route))) {
+    return NextResponse.next();
+  }
+
+  // Allow auth check routes (these routes handle their own auth validation)
+  if (authCheckRoutes.some((route) => pathname.startsWith(route))) {
     return NextResponse.next();
   }
 

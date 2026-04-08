@@ -20,6 +20,11 @@ export interface User {
   updated_at: Date;
 }
 
+// Internal type that includes password_hash for authentication
+interface UserWithPassword extends User {
+  password_hash: string;
+}
+
 export interface Session {
   id: number;
   user_id: number;
@@ -39,7 +44,7 @@ export async function authenticate(
 ): Promise<{ user: User; session: Session } | null> {
   try {
     // Find user by username
-    const userResult = await query<User>(
+    const userResult = await query<UserWithPassword>(
       'SELECT * FROM users WHERE username = $1 AND is_active = true',
       [username]
     );
@@ -193,7 +198,7 @@ export async function changePassword(
   try {
     return await transaction(async (client) => {
       // Get current user
-      const userResult = await client.query<User>(
+      const userResult = await client.query<UserWithPassword>(
         'SELECT * FROM users WHERE id = $1',
         [userId]
       );

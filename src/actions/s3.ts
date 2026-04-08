@@ -34,12 +34,18 @@ function getS3Client(config: S3Config): S3Client {
 
 export async function listObjects(
   config: Bucket,
-  prefix: string
-): Promise<{ folders: { Prefix: string }[]; files: { Key?: string; LastModified?: Date; Size?: number }[] }> {
+  prefix: string,
+  options?: { limit?: number; continuationToken?: string }
+): Promise<{
+  folders: { Prefix: string }[];
+  files: { Key?: string; LastModified?: Date; Size?: number }[];
+  nextContinuationToken?: string;
+  isComplete: boolean;
+}> {
   const s3Client = getS3Client(config);
   const folders: { Prefix: string }[] = [];
   const files: { Key?: string; LastModified?: Date; Size?: number }[] = [];
-  let continuationToken: string | undefined = undefined;
+  let continuationToken: string | undefined = options?.continuationToken;
 
   do {
     const command = new ListObjectsV2Command({
@@ -47,6 +53,7 @@ export async function listObjects(
       Prefix: prefix,
       Delimiter: "/",
       ContinuationToken: continuationToken,
+      ...(options?.limit !== undefined ? { MaxKeys: options.limit } : {}),
     });
     const response = await s3Client.send(command);
 
@@ -60,9 +67,12 @@ export async function listObjects(
     }
 
     continuationToken = response.NextContinuationToken;
+
+    // When a limit is set, only fetch one page then return
+    if (options?.limit !== undefined) break;
   } while (continuationToken);
 
-  return { folders, files };
+  return { folders, files, nextContinuationToken: continuationToken, isComplete: !continuationToken };
 }
 
 export async function validateS3Connection(config: S3Config): Promise<{ success: boolean; message: string }> {

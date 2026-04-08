@@ -36,23 +36,14 @@ export default function HomePage() {
 
   useEffect(() => {
     // Check session validity via API (only once on mount)
+    // Note: Cannot check document.cookie because session_token is HttpOnly
     let mounted = true;
 
     const checkSession = async () => {
-      const hasSessionCookie = document.cookie.includes('session_token=');
-      console.log("[HOME] Auth check - hasSessionCookie:", hasSessionCookie);
-
-      if (!hasSessionCookie) {
-        console.log("[HOME] No session cookie found");
-        if (mounted) {
-          setSessionChecked(true);
-          setHasValidSession(false);
-        }
-        return;
-      }
+      console.log("[HOME] Checking session with API...");
 
       try {
-        // Validate session with API
+        // Validate session with API - cookie is sent automatically
         const response = await fetch('/api/auth/session', {
           credentials: 'include', // Required to send cookies
         });

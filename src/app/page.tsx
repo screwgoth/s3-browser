@@ -53,7 +53,9 @@ export default function HomePage() {
 
       try {
         // Validate session with API
-        const response = await fetch('/api/auth/session');
+        const response = await fetch('/api/auth/session', {
+          credentials: 'include', // Required to send cookies
+        });
         const isValid = response.ok;
         console.log("[HOME] Session validation result:", isValid);
 

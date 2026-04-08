@@ -49,7 +49,9 @@ export default function ChangePasswordPage() {
 
   const checkSession = async () => {
     try {
-      const response = await fetch('/api/auth/session');
+      const response = await fetch('/api/auth/session', {
+        credentials: 'include', // Required to send cookies
+      });
       if (response.ok) {
         const data = await response.json();
         setUser(data.user);
@@ -97,6 +99,7 @@ export default function ChangePasswordPage() {
       const response = await fetch('/api/auth/change-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Required to send cookies
         body: JSON.stringify({
           oldPassword: user?.must_change_password ? undefined : oldPassword,
           newPassword,

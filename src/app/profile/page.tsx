@@ -1,7 +1,6 @@
 "use client";
 
 import { useAuth } from '@/context/AuthContext';
-import { useUser } from '@/context/UserContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -14,7 +13,6 @@ import { AppSidebar } from '@/components/app-sidebar';
 
 export default function ProfilePage() {
   const { user, isLoading, logout } = useAuth();
-  const { updateUser } = useUser();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -40,27 +38,16 @@ export default function ProfilePage() {
     return null;
   }
 
-  const handlePasswordChange = (e: React.FormEvent) => {
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsChangingPassword(true);
 
-    // Validate current password
-    if (currentPassword !== user.password) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Current password is incorrect.',
-      });
-      setIsChangingPassword(false);
-      return;
-    }
-
     // Validate new password
-    if (newPassword.length < 6) {
+    if (newPassword.length < 8) {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'New password must be at least 6 characters long.',
+        description: 'New password must be at least 8 characters long.',
       });
       setIsChangingPassword(false);
       return;
@@ -77,20 +64,29 @@ export default function ProfilePage() {
       return;
     }
 
-    // Update password
-    updateUser(user.username, newPassword);
+    try {
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldPassword: currentPassword, newPassword }),
+        credentials: 'include',
+      });
 
-    // Clear form
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setIsChangingPassword(false);
+      const data = await response.json();
 
-    toast({
-      title: 'Success',
-      description: 'Password updated successfully.',
-      duration: 500,
-    });
+      if (response.ok) {
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        toast({ title: 'Success', description: 'Password updated successfully.', duration: 1500 });
+      } else {
+        toast({ variant: 'destructive', title: 'Error', description: data.error || 'Failed to update password.' });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'Error', description: 'An error occurred. Please try again.' });
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   return (
@@ -162,7 +158,7 @@ export default function ProfilePage() {
                       onChange={(e) => setNewPassword(e.target.value)}
                       required
                       placeholder="Enter new password"
-                      minLength={6}
+                      minLength={8}
                     />
                     <Button
                       type="button"
@@ -175,7 +171,7 @@ export default function ProfilePage() {
                     </Button>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Minimum 6 characters
+                    Minimum 8 characters, must include uppercase, lowercase, and a number
                   </p>
                 </div>
 

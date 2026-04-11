@@ -272,6 +272,57 @@ export async function toggleUserStatus(
 }
 
 /**
+ * Reset a user's password (admin action) — sets must_change_password = true
+ */
+export async function resetUserPassword(
+  id: number,
+  newPassword: string,
+  resetBy?: number,
+  resetByUsername?: string
+): Promise<boolean> {
+  try {
+    const passwordHash = await hashPassword(newPassword);
+
+    return await transaction(async (client) => {
+      const result = await client.query<User>(
+        `UPDATE users
+         SET password_hash = $1,
+             must_change_password = true,
+             last_password_change = NOW(),
+             updated_at = NOW()
+         WHERE id = $2
+         RETURNING id, username`,
+        [passwordHash, id]
+      );
+
+      if (result.rows.length === 0) {
+        return false;
+      }
+
+      const user = result.rows[0];
+
+      // Invalidate all sessions for this user
+      await client.query('DELETE FROM sessions WHERE user_id = $1', [id]);
+
+      await createAuditLog({
+        user_id: resetBy,
+        username: resetByUsername,
+        action: 'password.admin_reset',
+        resource_type: 'user',
+        resource_id: id.toString(),
+        details: { target_username: user.username },
+        status: 'success',
+      });
+
+      return true;
+    });
+  } catch (error) {
+    console.error('Reset user password error:', error);
+    return false;
+  }
+}
+
+/**
  * Get user count by role
  */
 export async function getUserCountByRole(): Promise<Record<string, number>> {

@@ -80,21 +80,19 @@ export function BucketProvider({ children }: { children: React.ReactNode }) {
   // Calculate user-visible buckets with permissions
   const userBuckets: BucketWithPermission[] = React.useMemo(() => {
     if (!user) return [];
-    
-    const isAdmin = user.username === 'admin';
+
+    const isAdmin = user.role === 'admin';
     const userAssignments = getUserAssignments(user.username);
     const assignedBucketIds = new Set(userAssignments.map(a => a.bucketId));
 
     return allBucketsData
       .filter(b => {
-        // Admin sees all buckets they own
-        if (isAdmin && b.owner === user.username) return true;
+        // Admins see every bucket
+        if (isAdmin) return true;
         // Users see buckets they own
         if (b.owner === user.username) return true;
         // Users see buckets assigned to them
         if (assignedBucketIds.has(b.id)) return true;
-        // Legacy buckets without owner - show to admin only
-        if (!b.owner && isAdmin) return true;
         return false;
       })
       .map(b => ({

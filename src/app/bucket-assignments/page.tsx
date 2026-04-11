@@ -3,17 +3,24 @@
 import { useAuth } from '@/context/AuthContext';
 import { useBucket } from '@/context/BucketContext';
 import { useBucketAssignment } from '@/context/BucketAssignmentContext';
-import { useUser } from '@/context/UserContext';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, UserPlus, Shield } from 'lucide-react';
-import type { UserRole } from '@/context/UserContext';
 import { writeAuditLog } from '@/actions/audit';
 import { AppSidebar } from '@/components/app-sidebar';
+
+type UserRole = 'viewer' | 'uploader' | 'bucket-creator' | 'admin';
+
+interface ApiUser {
+  id: number;
+  username: string;
+  role: UserRole;
+  is_active: boolean;
+}
 
 const roleBadgeClass: Record<UserRole, string> = {
   viewer: 'bg-gray-100 text-gray-700',
@@ -32,7 +39,6 @@ export default function BucketAssignmentsPage() {
   const { user, isAdmin, isLoading } = useAuth();
   const router = useRouter();
   const { allBuckets } = useBucket();
-  const { users } = useUser();
   const {
     getBucketAssignments,
     assignUserToBucket,
@@ -41,6 +47,7 @@ export default function BucketAssignmentsPage() {
 
   const [selectedBucketId, setSelectedBucketId] = useState<string>('');
   const [selectedUsername, setSelectedUsername] = useState<string>('');
+  const [apiUsers, setApiUsers] = useState<ApiUser[]>([]);
 
   useEffect(() => {
     if (!isLoading && !isAdmin) {
@@ -48,13 +55,31 @@ export default function BucketAssignmentsPage() {
     }
   }, [isAdmin, isLoading, router]);
 
+  const fetchUsers = useCallback(async () => {
+    try {
+      const response = await fetch('/api/users', { credentials: 'include' });
+      if (response.ok) {
+        const data = await response.json();
+        setApiUsers(data.users);
+      }
+    } catch {
+      // silently ignore — user list stays empty
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading && isAdmin) {
+      fetchUsers();
+    }
+  }, [isLoading, isAdmin, fetchUsers]);
+
   if (isLoading) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
   }
 
   if (!isAdmin) return null;
 
-  const nonAdminUsers = users.filter(u => u.role !== 'admin');
+  const nonAdminUsers = apiUsers.filter(u => u.role !== 'admin');
 
   const handleAssignUser = async () => {
     if (!selectedBucketId || !selectedUsername) return;
@@ -168,7 +193,7 @@ export default function BucketAssignmentsPage() {
                   ) : (
                     <div className="space-y-2">
                       {assignments.map(assignment => {
-                        const assignedUser = users.find(u => u.username === assignment.username);
+                        const assignedUser = apiUsers.find(u => u.username === assignment.username);
                         const role = assignedUser?.role ?? 'viewer';
                         return (
                           <div

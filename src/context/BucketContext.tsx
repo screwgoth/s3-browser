@@ -155,17 +155,17 @@ export function BucketProvider({ children }: { children: React.ReactNode }) {
 
   const canEditBucket = (bucketId: string): boolean => {
     if (!user) return false;
+    if (user.role === 'admin') return true;
     const bucket = getBucketById(bucketId);
     if (!bucket) return false;
-    // Only owner can edit
     return bucket.isOwner;
   };
 
   const canDeleteBucket = (bucketId: string): boolean => {
     if (!user) return false;
+    if (user.role === 'admin') return true;
     const bucket = getBucketById(bucketId);
     if (!bucket) return false;
-    // Only owner can delete
     return bucket.isOwner;
   };
 

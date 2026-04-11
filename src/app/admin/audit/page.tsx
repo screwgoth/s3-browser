@@ -64,9 +64,11 @@ export default function AuditLogPage() {
   useEffect(() => {
     if (!selectedDate) return;
     setLoadingEntries(true);
+    setUserFilter('all');
+    setActionFilter('all');
+    setSearch('');
     readAuditLog(selectedDate).then((e) => {
       setEntries(e);
-      setFiltered(e);
       setLoadingEntries(false);
     });
   }, [selectedDate]);

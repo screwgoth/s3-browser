@@ -47,6 +47,7 @@ export default function AuditLogPage() {
   const [filtered, setFiltered] = useState<AuditEntry[]>([]);
   const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState('all');
+  const [userFilter, setUserFilter] = useState('all');
   const [loadingEntries, setLoadingEntries] = useState(false);
 
   useEffect(() => {
@@ -63,15 +64,18 @@ export default function AuditLogPage() {
   useEffect(() => {
     if (!selectedDate) return;
     setLoadingEntries(true);
+    setUserFilter('all');
+    setActionFilter('all');
+    setSearch('');
     readAuditLog(selectedDate).then((e) => {
       setEntries(e);
-      setFiltered(e);
       setLoadingEntries(false);
     });
   }, [selectedDate]);
 
   useEffect(() => {
     let result = entries;
+    if (userFilter !== 'all') result = result.filter(e => e.actor === userFilter);
     if (actionFilter !== 'all') result = result.filter(e => e.action === actionFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -82,7 +86,7 @@ export default function AuditLogPage() {
       );
     }
     setFiltered(result);
-  }, [search, actionFilter, entries]);
+  }, [search, actionFilter, userFilter, entries]);
 
   const handleExportCSV = () => {
     const header = 'Timestamp,Action,Actor,Detail\n';
@@ -99,6 +103,7 @@ export default function AuditLogPage() {
   };
 
   const uniqueActions = Array.from(new Set(entries.map(e => e.action))).sort();
+  const uniqueActors = Array.from(new Set(entries.map(e => e.actor))).sort();
 
   if (isLoading || !isAdmin) {
     return <div className="w-screen h-screen flex items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
@@ -142,6 +147,22 @@ export default function AuditLogPage() {
                 </Select>
               </div>
 
+              {/* User filter */}
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">User</label>
+                <Select value={userFilter} onValueChange={setUserFilter}>
+                  <SelectTrigger className="w-44">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Users</SelectItem>
+                    {uniqueActors.map(a => (
+                      <SelectItem key={a} value={a}>{a}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* Action filter */}
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Action</label>
@@ -173,7 +194,7 @@ export default function AuditLogPage() {
               </div>
 
               <div className="flex gap-2 pb-0.5">
-                <Button variant="outline" size="sm" onClick={() => { setSearch(''); setActionFilter('all'); }}>
+                <Button variant="outline" size="sm" onClick={() => { setSearch(''); setActionFilter('all'); setUserFilter('all'); }}>
                   <RefreshCw className="h-4 w-4 mr-1" /> Reset
                 </Button>
                 <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={filtered.length === 0}>

@@ -4,10 +4,11 @@ A modern, self-hosted S3 bucket browser built with Next.js 14. Browse, download,
 
 ## Features
 
+### Core Features
 - 🗂️ **Multi-bucket management** — Add, edit, and delete multiple S3 bucket configs
-- 👤 **Multi-user support** — Admin and user accounts, each with their own bucket list
-- 🔐 **Secure by design** — All AWS API calls run server-side; credentials never touch the browser
-- 🔑 **Full credential support** — Access key + secret, plus optional **Session Token** for temporary credentials (AWS STS, IAM roles, SSO)
+- 👤 **Multi-user support** — Role-based access control (viewer/uploader/bucket-creator/admin)
+- 🔐 **Database-backed authentication** — Secure session management with forced password change
+- 🔑 **Encrypted credentials** — AWS keys encrypted at rest with AES-256-GCM
 - 📁 **Folder navigation** — Browse nested folders with breadcrumb navigation
 - 🔍 **Search** — Filter files and folders within any directory
 - ⬇️ **Downloads** — Single files, multi-select, or entire folders as ZIP
@@ -16,37 +17,64 @@ A modern, self-hosted S3 bucket browser built with Next.js 14. Browse, download,
 - ✅ **Connection testing** — Validate credentials before browsing
 - 🌐 **Root folder scoping** — Optionally restrict a bucket config to a specific folder path
 
+### Security & Compliance
+- 🔒 **Encrypted storage** — AWS credentials encrypted with AES-256-GCM
+- 🔐 **Session management** — HTTP-only secure cookies, 24-hour expiration
+- 🔑 **Password policy** — Strong password requirements enforced
+- 📝 **Audit trail** — PCI-DSS compliant logging of all operations
+- 👥 **Role-based access** — Granular permissions per user role
+- 🚫 **Server-side only** — All AWS API calls run server-side; no credentials in browser
+
 ## Tech Stack
 
-- **Framework:** Next.js 14 (App Router)
+- **Framework:** Next.js 15 (App Router)
 - **Language:** TypeScript
+- **Database:** PostgreSQL 16 with encrypted storage
+- **Authentication:** bcrypt password hashing, session-based auth
+- **Encryption:** AES-256-GCM for AWS credentials
 - **Styling:** Tailwind CSS + shadcn/ui
 - **AWS SDK:** `@aws-sdk/client-s3` (server-side only)
-- **Storage:** localStorage (browser) for bucket configurations
+- **Management:** pgAdmin 4 for database administration
 
 ## Getting Started
 
-### Quick Start with Docker (Recommended)
+> **⚡ Quick Start:** See [QUICKSTART.md](QUICKSTART.md) for 5-minute setup  
+> **📚 Complete Guide:** See [SETUP.md](SETUP.md) for detailed instructions
+
+### Prerequisites
+
+- Node.js 18+
+- Docker & Docker Compose
+- npm or yarn
+
+### Quick Setup (Database-backed)
 
 ```bash
+# 1. Clone and install
 git clone https://github.com/screwgoth/s3-browser.git
 cd s3-browser
-docker-compose up -d
+git checkout database-implementation
+npm install
+
+# 2. Generate encryption keys
+npm run generate-keys
+
+# 3. Configure environment
+cp .env.example .env
+# Edit .env with your generated keys
+
+# 4. Setup database
+./db.sh setup
+
+# 5. Start application
+npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:5000](http://localhost:5000)
 
-**Docker commands:**
-```bash
-./docker.sh start    # Start the application
-./docker.sh stop     # Stop the application
-./docker.sh logs     # View logs
-./docker.sh rebuild  # Rebuild after code changes
-```
+**Default login:** `admin` / `admin` (you'll be forced to change password)
 
-See [DOCKER.md](DOCKER.md) for detailed Docker documentation.
-
-### Local Development
+### Legacy Setup (localStorage)
 
 **Prerequisites:**
 - Node.js 18+

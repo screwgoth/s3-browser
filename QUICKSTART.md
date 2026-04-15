@@ -94,9 +94,9 @@ sudo lsof -i :5432  # Check port
 ./db.sh setup  # Setup again
 ```
 
-**More help:** See `SETUP.md` or troubleshooting section
+**More help:** See [SETUP.md](docs/SETUP.md) or troubleshooting section
 
 ---
 
-**Complete Guide:** See `SETUP.md`  
-**Testing:** See `PHASE1_TESTING.md`, `PHASE2_TESTING.md`
+**Complete Guide:** See [SETUP.md](docs/SETUP.md)  
+**Testing:** See [PHASE1_TESTING.md](docs/PHASE1_TESTING.md), [PHASE2_TESTING.md](docs/PHASE2_TESTING.md)

@@ -47,6 +47,46 @@ export interface UpdateBucketInput {
 }
 
 /**
+ * Get all buckets across all users (admin only)
+ */
+export async function getAllBuckets(): Promise<Bucket[]> {
+  const result = await query<any>(
+    `SELECT
+      id, user_id, alias, bucket_name, region, root_folder,
+      access_key_id as access_key_id_encrypted,
+      secret_access_key as secret_access_key_encrypted,
+      session_token as session_token_encrypted,
+      is_active, created_at, updated_at
+     FROM buckets
+     WHERE is_active = true
+     ORDER BY created_at DESC`
+  );
+
+  return result.rows.map((row) => {
+    const decrypted = decryptCredentials({
+      access_key_id_encrypted: row.access_key_id_encrypted,
+      secret_access_key_encrypted: row.secret_access_key_encrypted,
+      session_token_encrypted: row.session_token_encrypted,
+    });
+
+    return {
+      id: row.id,
+      user_id: row.user_id,
+      alias: row.alias,
+      bucket_name: row.bucket_name,
+      region: row.region,
+      root_folder: row.root_folder,
+      access_key_id: decrypted.access_key_id,
+      secret_access_key: decrypted.secret_access_key,
+      session_token: decrypted.session_token,
+      is_active: row.is_active,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    };
+  });
+}
+
+/**
  * Get all buckets for a user
  */
 export async function getBucketsByUserId(userId: number): Promise<Bucket[]> {
@@ -89,19 +129,29 @@ export async function getBucketsByUserId(userId: number): Promise<Bucket[]> {
 }
 
 /**
- * Get a single bucket by ID
+ * Get a single bucket by ID.
+ * Pass isAdmin=true to bypass the user_id ownership check (admin access).
  */
-export async function getBucketById(id: number, userId: number): Promise<Bucket | null> {
+export async function getBucketById(id: number, userId: number, isAdmin = false): Promise<Bucket | null> {
   const result = await query<any>(
-    `SELECT 
-      id, user_id, alias, bucket_name, region, root_folder,
-      access_key_id as access_key_id_encrypted,
-      secret_access_key as secret_access_key_encrypted,
-      session_token as session_token_encrypted,
-      is_active, created_at, updated_at
-     FROM buckets 
-     WHERE id = $1 AND user_id = $2`,
-    [id, userId]
+    isAdmin
+      ? `SELECT
+          id, user_id, alias, bucket_name, region, root_folder,
+          access_key_id as access_key_id_encrypted,
+          secret_access_key as secret_access_key_encrypted,
+          session_token as session_token_encrypted,
+          is_active, created_at, updated_at
+         FROM buckets
+         WHERE id = $1`
+      : `SELECT
+          id, user_id, alias, bucket_name, region, root_folder,
+          access_key_id as access_key_id_encrypted,
+          secret_access_key as secret_access_key_encrypted,
+          session_token as session_token_encrypted,
+          is_active, created_at, updated_at
+         FROM buckets
+         WHERE id = $1 AND user_id = $2`,
+    isAdmin ? [id] : [id, userId]
   );
 
   if (result.rows.length === 0) {
@@ -213,17 +263,19 @@ export async function createBucket(input: CreateBucketInput): Promise<Bucket | n
 }
 
 /**
- * Update a bucket
+ * Update a bucket.
+ * Pass isAdmin=true to allow updating buckets owned by other users (admin access).
  */
 export async function updateBucket(
   id: number,
   userId: number,
-  input: UpdateBucketInput
+  input: UpdateBucketInput,
+  isAdmin = false
 ): Promise<Bucket | null> {
   try {
     return await transaction(async (client) => {
-      // Check ownership
-      const existing = await getBucketById(id, userId);
+      // Check ownership (admins bypass user_id filter)
+      const existing = await getBucketById(id, userId, isAdmin);
       if (!existing) {
         throw new Error('Bucket not found or access denied');
       }
@@ -286,13 +338,21 @@ export async function updateBucket(
       }
 
       updates.push(`updated_at = NOW()`);
-      params.push(id, userId);
+      if (isAdmin) {
+        params.push(id);
+      } else {
+        params.push(id, userId);
+      }
+
+      const whereClause = isAdmin
+        ? `WHERE id = $${paramIndex++}`
+        : `WHERE id = $${paramIndex++} AND user_id = $${paramIndex}`;
 
       const result = await client.query<any>(
-        `UPDATE buckets 
-         SET ${updates.join(', ')} 
-         WHERE id = $${paramIndex++} AND user_id = $${paramIndex}
-         RETURNING 
+        `UPDATE buckets
+         SET ${updates.join(', ')}
+         ${whereClause}
+         RETURNING
            id, user_id, alias, bucket_name, region, root_folder,
            access_key_id as access_key_id_encrypted,
            secret_access_key as secret_access_key_encrypted,
@@ -345,24 +405,28 @@ export async function updateBucket(
 }
 
 /**
- * Delete a bucket (soft delete)
+ * Delete a bucket (soft delete).
+ * Pass isAdmin=true to allow deleting buckets owned by other users (admin access).
  */
 export async function deleteBucket(
   id: number,
   userId: number,
-  username?: string
+  username?: string,
+  isAdmin = false
 ): Promise<boolean> {
   try {
     return await transaction(async (client) => {
-      // Check ownership
-      const existing = await getBucketById(id, userId);
+      // Check ownership (admins bypass user_id filter)
+      const existing = await getBucketById(id, userId, isAdmin);
       if (!existing) {
         return false;
       }
 
       await client.query(
-        'UPDATE buckets SET is_active = false, updated_at = NOW() WHERE id = $1 AND user_id = $2',
-        [id, userId]
+        isAdmin
+          ? 'UPDATE buckets SET is_active = false, updated_at = NOW() WHERE id = $1'
+          : 'UPDATE buckets SET is_active = false, updated_at = NOW() WHERE id = $1 AND user_id = $2',
+        isAdmin ? [id] : [id, userId]
       );
 
       // Audit log

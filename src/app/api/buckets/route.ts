@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateSession } from '@/lib/auth';
-import { getBucketsByUserId, createBucket, getBucketCount } from '@/lib/buckets';
+import { getAllBuckets, getBucketsByUserId, createBucket, getBucketCount } from '@/lib/buckets';
 import { cookies } from 'next/headers';
 
 // GET /api/buckets - Get all buckets for current user
@@ -18,8 +18,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
     }
 
-    const buckets = await getBucketsByUserId(user.id);
-    const count = await getBucketCount(user.id);
+    const isAdmin = user.role === 'admin';
+    const buckets = isAdmin ? await getAllBuckets() : await getBucketsByUserId(user.id);
+    const count = isAdmin ? buckets.length : await getBucketCount(user.id);
 
     return NextResponse.json({
       buckets,

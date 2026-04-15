@@ -28,7 +28,7 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid bucket ID' }, { status: 400 });
     }
 
-    const bucket = await getBucketById(bucketId, user.id);
+    const bucket = await getBucketById(bucketId, user.id, user.role === 'admin');
 
     if (!bucket) {
       return NextResponse.json({ error: 'Bucket not found' }, { status: 404 });
@@ -82,7 +82,7 @@ export async function PATCH(
       session_token,
       is_active,
       username: user.username,
-    });
+    }, user.role === 'admin');
 
     if (!bucket) {
       return NextResponse.json(
@@ -129,7 +129,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid bucket ID' }, { status: 400 });
     }
 
-    const success = await deleteBucket(bucketId, user.id, user.username);
+    const success = await deleteBucket(bucketId, user.id, user.username, user.role === 'admin');
 
     if (!success) {
       return NextResponse.json(

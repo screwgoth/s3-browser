@@ -39,7 +39,7 @@ A modern, self-hosted S3 bucket browser built with Next.js 14. Browse, download,
 ## Getting Started
 
 > **⚡ Quick Start:** See [QUICKSTART.md](QUICKSTART.md) for 5-minute setup  
-> **📚 Complete Guide:** See [SETUP.md](SETUP.md) for detailed instructions
+> **📚 Complete Guide:** See [SETUP.md](docs/SETUP.md) for detailed instructions
 
 ### Prerequisites
 

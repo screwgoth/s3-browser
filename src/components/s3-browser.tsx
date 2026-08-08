@@ -6,10 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatBytes } from "@/lib/utils";
-import { Folder, File, HardDrive, LogOut, Home, Loader2, FileImage, FileText, Music, Video, Search, Download, Upload, ChevronsLeft, ChevronsRight, AlertCircle, RefreshCw, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Folder, File, HardDrive, LogOut, Home, Loader2, FileImage, FileText, Music, Video, Search, Download, Upload, ChevronsLeft, ChevronsRight, AlertCircle, RefreshCw, AlertTriangle, ShieldCheck, FolderPlus, FolderInput, Trash2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import ObjectDetails from "./object-details";
 import UploadDialog from "./upload-dialog";
+import NewFolderDialog from "./new-folder-dialog";
+import MoveDialog from "./move-dialog";
+import DeleteDialog from "./delete-dialog";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { useToast } from "@/hooks/use-toast";
 import type { BucketWithPermission } from "@/context/BucketContext";
@@ -66,7 +69,7 @@ interface S3BrowserProps {
 
 export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
   const { canUploadToBucket } = useBucket();
-  const { canUpload: canUploadRole } = usePermission();
+  const { canUpload: canUploadRole, canCreateFolder, canMove, canDelete } = usePermission();
   const canUpload = canUploadToBucket(config.id) && canUploadRole();
 
   // Ensure root folder ends with /
@@ -86,6 +89,9 @@ export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [newFolderOpen, setNewFolderOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [sortOrder, setSortOrder] = useState<'none' | 'newest' | 'oldest'>('none');
   const [goToPage, setGoToPage] = useState('');
@@ -210,6 +216,28 @@ export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
     }
   };
 
+  /** The currently selected rows, resolved back to keys and types. */
+  const selectedItems = useMemo(
+    () =>
+      items
+        .filter(item => selectedKeys.has(item.type === 'folder' ? (item as CommonPrefix).Prefix! : (item as _Object).Key!))
+        .map(item => ({
+          key: (item.type === 'folder' ? (item as CommonPrefix).Prefix : (item as _Object).Key)!,
+          type: item.type,
+        })),
+    [items, selectedKeys]
+  );
+  const selectedFileKeys = useMemo(
+    () => selectedItems.filter(i => i.type === 'file').map(i => i.key),
+    [selectedItems]
+  );
+  const selectedFolderCount = selectedItems.length - selectedFileKeys.length;
+
+  const handleMutationComplete = () => {
+    setSelectedKeys(new Set());
+    fetchItems(prefix);
+  };
+
   const handleUploadComplete = () => {
     // Refresh the items list after upload
     fetchItems(prefix);
@@ -302,10 +330,32 @@ export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
             Upload Files
           </Button>
           )}
+          {canCreateFolder() && (
+          <Button
+            onClick={() => setNewFolderOpen(true)}
+            variant="outline"
+            title="Create a folder here"
+          >
+            <FolderPlus className="mr-2 h-4 w-4" />
+            New Folder
+          </Button>
+          )}
           {selectedKeys.size > 0 && (
             <Button onClick={handleDownloadSelected} disabled={isDownloading}>
               {isDownloading ? <Loader2 className="mr-2 animate-spin" /> : <Download className="mr-2" />}
               Download Selected ({selectedKeys.size})
+            </Button>
+          )}
+          {selectedFileKeys.length > 0 && canMove() && (
+            <Button variant="outline" onClick={() => setMoveOpen(true)}>
+              <FolderInput className="mr-2 h-4 w-4" />
+              Move Selected ({selectedFileKeys.length})
+            </Button>
+          )}
+          {selectedKeys.size > 0 && canDelete() && (
+            <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Selected ({selectedKeys.size})
             </Button>
           )}
           <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as 'none' | 'newest' | 'oldest')}>
@@ -616,6 +666,33 @@ export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
         bucketConfig={config}
         currentPrefix={prefix}
         onUploadComplete={handleUploadComplete}
+      />
+
+      <NewFolderDialog
+        open={newFolderOpen}
+        onOpenChange={setNewFolderOpen}
+        bucketId={config.id}
+        currentPrefix={prefix}
+        onCreated={() => fetchItems(prefix)}
+      />
+
+      <MoveDialog
+        open={moveOpen}
+        onOpenChange={setMoveOpen}
+        config={config}
+        rootPrefix={rootFolder}
+        currentPrefix={prefix}
+        fileKeys={selectedFileKeys}
+        excludedFolderCount={selectedFolderCount}
+        onMoved={handleMutationComplete}
+      />
+
+      <DeleteDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        bucketId={config.id}
+        items={selectedItems}
+        onDeleted={handleMutationComplete}
       />
     </Card>
   );

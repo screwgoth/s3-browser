@@ -69,6 +69,43 @@ export async function clearCleanFlag(bucketId: number, objectKey: string): Promi
   );
 }
 
+/**
+ * Carry an object's scan record across a move. Without this a moved file loses
+ * its "clean" badge, or keeps an "unscanned" warning bound to a dead key.
+ */
+export async function moveScanStatus(
+  bucketId: number,
+  fromKey: string,
+  toKey: string
+): Promise<void> {
+  for (const table of ['unscanned_objects', 'scanned_clean_objects'] as const) {
+    // Clear anything already recorded at the destination so the UPDATE cannot
+    // collide with the (bucket_id, object_key) unique constraint.
+    await query(
+      `DELETE FROM ${table} WHERE bucket_id = $1 AND object_key = $2`,
+      [bucketId, toKey]
+    );
+    await query(
+      `UPDATE ${table} SET object_key = $3 WHERE bucket_id = $1 AND object_key = $2`,
+      [bucketId, fromKey, toKey]
+    );
+  }
+}
+
+/** Drop scan records for deleted keys so a later re-upload starts clean. */
+export async function clearScanStatusForKeys(
+  bucketId: number,
+  keys: string[]
+): Promise<void> {
+  if (keys.length === 0) return;
+  for (const table of ['unscanned_objects', 'scanned_clean_objects'] as const) {
+    await query(
+      `DELETE FROM ${table} WHERE bucket_id = $1 AND object_key = ANY($2::text[])`,
+      [bucketId, keys]
+    );
+  }
+}
+
 /** Return the subset of the given keys that are recorded scanned-clean for this bucket. */
 export async function getCleanKeys(
   bucketId: number,

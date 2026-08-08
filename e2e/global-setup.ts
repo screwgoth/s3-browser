@@ -12,7 +12,7 @@
  */
 import bcrypt from 'bcrypt';
 import { pool, closePool } from './db';
-import { ADMIN, VIEWER, TEST_BUCKET_ALIAS } from './fixtures';
+import { ADMIN, VIEWER, UPLOADER, TEST_BUCKET_ALIAS, RBAC_BUCKET_ALIAS } from './fixtures';
 
 const SALT_ROUNDS = 10; // matches src/lib/auth.ts
 
@@ -32,10 +32,11 @@ async function upsertUser(username: string, password: string, role: string) {
 
 async function globalSetup() {
   // Clean up test buckets (and their assignments cascade) from previous runs.
-  await pool.query('DELETE FROM buckets WHERE alias = $1', [TEST_BUCKET_ALIAS]);
+  await pool.query('DELETE FROM buckets WHERE alias = ANY($1::text[])', [[TEST_BUCKET_ALIAS, RBAC_BUCKET_ALIAS]]);
 
   await upsertUser(ADMIN.username, ADMIN.password, 'admin');
   await upsertUser(VIEWER.username, VIEWER.password, 'viewer');
+  await upsertUser(UPLOADER.username, UPLOADER.password, 'uploader');
 
   await closePool();
 }

@@ -79,3 +79,6 @@ Ensure every new code changes, like a Bug fix or a new feature implementation, i
 - Forms: `react-hook-form` + `zod` (with `@hookform/resolvers`). Zod also validates Server Action inputs (see `S3ConfigSchema` in `src/actions/s3.ts`).
 - App version is read from the `VERSION` file at runtime in `src/app/layout.tsx`.
 - File upload cap: 100MB per file.
+- Create a new git branch for every new feature or bug fix
+- Limit the output from Claude to only essential information or questions on which I need to take a decision
+- Before every push update the `VERSION` file to next minor version.

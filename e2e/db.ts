@@ -47,6 +47,34 @@ export async function getBucketRowsByAlias(alias: string) {
   }>;
 }
 
+/**
+ * Insert a bucket row directly, with no stored credentials. Used by the
+ * role-gating spec, which only needs a bucket that exists and is reachable —
+ * the S3 calls it triggers are expected to fail.
+ */
+export async function insertBucketWithoutCredentials(alias: string, ownerId: number) {
+  const { rows } = await pool.query(
+    `INSERT INTO buckets (user_id, alias, bucket_name, region, is_active)
+     VALUES ($1, $2, 'e2e-rbac-bucket', 'us-east-1', true)
+     RETURNING id`,
+    [ownerId, alias]
+  );
+  return rows[0].id as number;
+}
+
+export async function assignBucket(bucketId: number, userId: number, permission = 'read') {
+  await pool.query(
+    `INSERT INTO bucket_assignments (bucket_id, user_id, permission)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (bucket_id, user_id) DO UPDATE SET permission = EXCLUDED.permission`,
+    [bucketId, userId, permission]
+  );
+}
+
+export async function deleteBucketsByAlias(alias: string) {
+  await pool.query('DELETE FROM buckets WHERE alias = $1', [alias]);
+}
+
 export async function getUserByUsername(username: string) {
   const { rows } = await pool.query(
     'SELECT id, username, role, is_active FROM users WHERE username = $1',

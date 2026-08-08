@@ -10,7 +10,15 @@ export const VIEWER = {
   password: 'ViewerPass123',
 };
 
+export const UPLOADER = {
+  username: 'e2e_uploader',
+  password: 'UploaderPass123',
+};
+
 export const TEST_BUCKET_ALIAS = 'E2E Test Bucket';
+
+/** Separate bucket for the object-management role-gating spec. */
+export const RBAC_BUCKET_ALIAS = 'E2E RBAC Bucket';
 
 export const TEST_BUCKET = {
   alias: TEST_BUCKET_ALIAS,

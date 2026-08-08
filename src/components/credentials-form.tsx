@@ -18,6 +18,9 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { Bucket } from "@/context/BucketContext";
 
+// Max configurable per-bucket limit in MB (mirrors MAX_CONFIGURABLE_UPLOAD_SIZE).
+const MAX_UPLOAD_SIZE_MB = 50;
+
 const formSchema = z.object({
   name: z.string().min(1, { message: "Bucket alias is required." }),
   accessKeyId: z.string().optional(),
@@ -26,37 +29,66 @@ const formSchema = z.object({
   region: z.string().min(1, { message: "Region is required." }),
   bucket: z.string().min(1, { message: "Bucket name is required." }),
   folder: z.string().optional(),
+  // MB in the UI; converted to bytes (maxUploadSize) on save. Blank = default.
+  maxUploadSizeMb: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : Number(v)),
+    z
+      .number({ invalid_type_error: "Enter a number." })
+      .positive({ message: "Must be greater than 0." })
+      .max(MAX_UPLOAD_SIZE_MB, { message: `Cannot exceed ${MAX_UPLOAD_SIZE_MB}MB.` })
+      .optional()
+  ),
 });
 
 export type S3Config = Omit<Bucket, 'id' | 'status'>;
+
+type FormValues = z.infer<typeof formSchema>;
 
 interface CredentialsFormProps {
   onSave: (config: S3Config) => void;
   onCancel: () => void;
   initialData?: S3Config;
   isEditing?: boolean;
+  isAdmin?: boolean;
 }
 
-export function CredentialsForm({ onSave, onCancel, initialData, isEditing = false }: CredentialsFormProps) {
+export function CredentialsForm({ onSave, onCancel, initialData, isEditing = false, isAdmin = false }: CredentialsFormProps) {
   const [showSecret, setShowSecret] = useState(false);
   const [showToken, setShowToken] = useState(false);
   const { toast } = useToast();
 
-  const form = useForm<S3Config>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: initialData || {
-      name: "",
-      accessKeyId: "",
-      secretAccessKey: "",
-      sessionToken: "",
-      region: "",
-      bucket: "",
-      folder: "",
-    },
+    defaultValues: initialData
+      ? {
+          ...initialData,
+          maxUploadSizeMb: initialData.maxUploadSize
+            ? Math.round(initialData.maxUploadSize / (1024 * 1024))
+            : undefined,
+        }
+      : {
+          name: "",
+          accessKeyId: "",
+          secretAccessKey: "",
+          sessionToken: "",
+          region: "",
+          bucket: "",
+          folder: "",
+          maxUploadSizeMb: undefined,
+        },
   });
 
-  function onSubmit(values: S3Config) {
-    onSave(values);
+  function onSubmit(values: FormValues) {
+    const { maxUploadSizeMb, ...rest } = values;
+    const config: S3Config = {
+      ...rest,
+      // Only admins can change the limit; for others send undefined so the
+      // server keeps the existing value (edit) or applies the default (create).
+      maxUploadSize: isAdmin
+        ? (maxUploadSizeMb ? Math.round(maxUploadSizeMb * 1024 * 1024) : null)
+        : undefined,
+    };
+    onSave(config);
     toast({
       title: isEditing ? "Bucket Updated" : "Bucket Added",
       description: `Successfully saved "${values.name}".`,
@@ -196,6 +228,31 @@ export function CredentialsForm({ onSave, onCancel, initialData, isEditing = fal
             </FormItem>
           )}
         />
+        {isAdmin && (
+          <FormField
+            control={form.control}
+            name="maxUploadSizeMb"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Max Upload Size (MB) <span className="text-muted-foreground">(admin only)</span></FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={MAX_UPLOAD_SIZE_MB}
+                    placeholder="10"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                </FormControl>
+                <div className="text-xs text-muted-foreground">
+                  Per-file limit for this bucket. Leave empty for the default (10MB). Max {MAX_UPLOAD_SIZE_MB}MB.
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel

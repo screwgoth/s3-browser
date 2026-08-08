@@ -6,10 +6,27 @@ set -e
 
 COMPOSE_FILE="docker-compose.db.yml"
 
+# Detect which Docker Compose flavour is available:
+#   - Compose v2 plugin:  docker compose
+#   - Legacy v1 binary:   docker-compose
+if docker compose version >/dev/null 2>&1; then
+  COMPOSE_CMD=(docker compose)
+elif command -v docker-compose >/dev/null 2>&1; then
+  COMPOSE_CMD=(docker-compose)
+else
+  echo "❌ Neither 'docker compose' (v2 plugin) nor 'docker-compose' (v1) was found."
+  echo "   Install Docker Compose and try again: https://docs.docker.com/compose/install/"
+  exit 1
+fi
+
+compose() {
+  "${COMPOSE_CMD[@]}" -f "$COMPOSE_FILE" "$@"
+}
+
 case "$1" in
   start)
     echo "🚀 Starting PostgreSQL + pgAdmin..."
-    docker-compose -f $COMPOSE_FILE up -d
+    compose up -d
     echo "✅ Database services started"
     echo ""
     echo "📊 PostgreSQL: localhost:5432"
@@ -22,19 +39,19 @@ case "$1" in
   
   stop)
     echo "🛑 Stopping database services..."
-    docker-compose -f $COMPOSE_FILE stop
+    compose stop
     echo "✅ Database services stopped"
     ;;
   
   restart)
     echo "🔄 Restarting database services..."
-    docker-compose -f $COMPOSE_FILE restart
+    compose restart
     echo "✅ Database services restarted"
     ;;
   
   down)
     echo "⚠️  Stopping and removing containers (data preserved)..."
-    docker-compose -f $COMPOSE_FILE down
+    compose down
     echo "✅ Containers removed"
     ;;
   
@@ -42,7 +59,7 @@ case "$1" in
     echo "⚠️  WARNING: This will delete all database data!"
     read -p "Are you sure? (yes/no): " confirm
     if [ "$confirm" == "yes" ]; then
-      docker-compose -f $COMPOSE_FILE down -v
+      compose down -v
       echo "✅ Database destroyed (volumes deleted)"
     else
       echo "❌ Cancelled"
@@ -50,11 +67,11 @@ case "$1" in
     ;;
   
   logs)
-    docker-compose -f $COMPOSE_FILE logs -f
+    compose logs -f
     ;;
   
   status)
-    docker-compose -f $COMPOSE_FILE ps
+    compose ps
     ;;
   
   psql)
@@ -103,7 +120,7 @@ case "$1" in
     echo "🏗️  Setting up database for the first time..."
     echo ""
     echo "1️⃣  Starting database services..."
-    docker-compose -f $COMPOSE_FILE up -d
+    compose up -d
     echo ""
     echo "2️⃣  Waiting for PostgreSQL to be ready..."
     sleep 5

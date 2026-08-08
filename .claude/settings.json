@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ls /home/raseel/code/s3-browser/graphify-out/ 2>/dev/null || mkdir -p /home/raseel/code/s3-browser/graphify-out)"
+      "Bash(ls /home/raseel/code/s3-browser/graphify-out/ 2>/dev/null || mkdir -p /home/raseel/code/s3-browser/graphify-out)",
+      "WebFetch(domain:www.avanse.com)",
+      "WebSearch",
+      "Bash(curl -sL --max-time 25 -A \"Mozilla/5.0\" https://www.avanse.com/ -o avanse.html)",
+      "Bash(git checkout *)"
     ],
     "additionalDirectories": [
       "/home/raseel/code/s3-browser/graphify-out"

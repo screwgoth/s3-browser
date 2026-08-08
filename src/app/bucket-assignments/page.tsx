@@ -97,7 +97,7 @@ export default function BucketAssignmentsPage() {
   };
 
   return (
-    <div className="min-h-screen skeu-bg">
+    <div className="min-h-screen skeu-bg app-content">
     <AppSidebar title="Bucket Assignments" titleIcon={<Shield className="h-5 w-5" />} />
     <div className="container mx-auto p-6 max-w-6xl">
 
@@ -111,9 +111,9 @@ export default function BucketAssignmentsPage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">Select Bucket</label>
+              <label htmlFor="assign-bucket" className="text-sm font-medium mb-2 block">Select Bucket</label>
               <Select value={selectedBucketId} onValueChange={setSelectedBucketId}>
-                <SelectTrigger>
+                <SelectTrigger id="assign-bucket" aria-label="Select bucket">
                   <SelectValue placeholder="Choose bucket" />
                 </SelectTrigger>
                 <SelectContent>
@@ -127,9 +127,9 @@ export default function BucketAssignmentsPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-2 block">Select User</label>
+              <label htmlFor="assign-user" className="text-sm font-medium mb-2 block">Select User</label>
               <Select value={selectedUsername} onValueChange={setSelectedUsername}>
-                <SelectTrigger>
+                <SelectTrigger id="assign-user" aria-label="Select user">
                   <SelectValue placeholder="Choose user" />
                 </SelectTrigger>
                 <SelectContent>

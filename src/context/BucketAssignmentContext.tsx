@@ -1,7 +1,8 @@
 "use client";
 
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { recordBucketAssignment } from '@/actions/audit-record';
 
 export type BucketPermission = 'read-only' | 'read-write';
 
@@ -26,106 +27,78 @@ const BucketAssignmentContext = createContext<BucketAssignmentContextType | unde
 export function BucketAssignmentProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
   const [assignments, setAssignments] = useState<BucketAssignment[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load assignments from localStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const storage = window.localStorage;
-        if (storage && typeof storage.getItem === 'function') {
-          const storedAssignments = storage.getItem('s3-bucket-assignments');
-          if (storedAssignments) {
-            setAssignments(JSON.parse(storedAssignments));
-          }
-        }
-      } catch (e) {
-        console.error("Failed to load bucket assignments from localStorage", e);
-        setAssignments([]);
+  const refreshAssignments = useCallback(async () => {
+    try {
+      const res = await fetch('/api/bucket-assignments', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setAssignments(
+          (data.assignments ?? []).map((a: any) => ({
+            bucketId: String(a.bucket_id),
+            username: a.username,
+            permission: a.permission as BucketPermission,
+          }))
+        );
       }
+      // 401/403 = non-admin session → leave assignments empty, no error needed
+    } catch (e) {
+      console.error('BucketAssignmentContext: failed to load assignments', e);
     }
-    setIsLoaded(true);
   }, []);
 
-  // Save assignments to localStorage
-  useEffect(() => {
-    if (isLoaded && typeof window !== 'undefined') {
-      try {
-        const storage = window.localStorage;
-        if (storage && typeof storage.setItem === 'function') {
-          storage.setItem('s3-bucket-assignments', JSON.stringify(assignments));
-        }
-      } catch (e) {
-        console.error("Failed to save bucket assignments to localStorage", e);
-      }
-    }
-  }, [assignments, isLoaded]);
+  useEffect(() => { refreshAssignments(); }, [refreshAssignments]);
 
   const assignUserToBucket = (bucketId: string, username: string, permission: BucketPermission) => {
-    // Check if assignment already exists
-    const existingIndex = assignments.findIndex(
-      a => a.bucketId === bucketId && a.username === username
-    );
-
-    if (existingIndex !== -1) {
-      // Update existing assignment
-      setAssignments(prev => prev.map((a, i) => 
-        i === existingIndex ? { ...a, permission } : a
-      ));
-      toast({ 
-        title: 'Updated', 
-        description: `Permission for "${username}" updated to ${permission}.`,
-        duration: 500
+    (async () => {
+      const res = await fetch('/api/bucket-assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ bucket_id: parseInt(bucketId, 10), username, permission }),
       });
-    } else {
-      // Add new assignment
-      setAssignments(prev => [...prev, { bucketId, username, permission }]);
-      toast({ 
-        title: 'Assigned', 
-        description: `User "${username}" assigned to bucket with ${permission} permission.`,
-        duration: 500
-      });
-    }
+      if (res.ok) {
+        await refreshAssignments();
+        await recordBucketAssignment(bucketId, bucketId, username, 'bucket.assigned');
+        toast({ title: 'Assigned', description: `"${username}" assigned to bucket.`, duration: 2000 });
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast({ variant: 'destructive', title: 'Error', description: data.error ?? 'Failed to assign user.' });
+      }
+    })();
   };
 
   const removeUserFromBucket = (bucketId: string, username: string) => {
-    setAssignments(prev => prev.filter(
-      a => !(a.bucketId === bucketId && a.username === username)
-    ));
-    toast({ 
-      title: 'Removed', 
-      description: `User "${username}" removed from bucket.`,
-      duration: 500
-    });
+    (async () => {
+      const res = await fetch('/api/bucket-assignments', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ bucket_id: parseInt(bucketId, 10), username }),
+      });
+      if (res.ok) {
+        await refreshAssignments();
+        await recordBucketAssignment(bucketId, bucketId, username, 'bucket.unassigned');
+        toast({ title: 'Removed', description: `"${username}" removed from bucket.`, duration: 2000 });
+      } else {
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to remove assignment.' });
+      }
+    })();
   };
 
+  // updateBucketPermission is a reassign with a new permission value.
   const updateBucketPermission = (bucketId: string, username: string, permission: BucketPermission) => {
-    setAssignments(prev => prev.map(a => 
-      a.bucketId === bucketId && a.username === username 
-        ? { ...a, permission } 
-        : a
-    ));
-    toast({ 
-      title: 'Updated', 
-      description: `Permission updated to ${permission}.`,
-      duration: 500
-    });
+    assignUserToBucket(bucketId, username, permission);
   };
 
-  const getBucketAssignments = (bucketId: string): BucketAssignment[] => {
-    return assignments.filter(a => a.bucketId === bucketId);
-  };
+  const getBucketAssignments = (bucketId: string): BucketAssignment[] =>
+    assignments.filter(a => a.bucketId === bucketId);
 
-  const getUserAssignments = (username: string): BucketAssignment[] => {
-    return assignments.filter(a => a.username === username);
-  };
+  const getUserAssignments = (username: string): BucketAssignment[] =>
+    assignments.filter(a => a.username === username);
 
-  const getUserBucketPermission = (bucketId: string, username: string): BucketPermission | null => {
-    const assignment = assignments.find(
-      a => a.bucketId === bucketId && a.username === username
-    );
-    return assignment ? assignment.permission : null;
-  };
+  const getUserBucketPermission = (bucketId: string, username: string): BucketPermission | null =>
+    assignments.find(a => a.bucketId === bucketId && a.username === username)?.permission ?? null;
 
   return (
     <BucketAssignmentContext.Provider value={{
@@ -135,7 +108,7 @@ export function BucketAssignmentProvider({ children }: { children: React.ReactNo
       updateBucketPermission,
       getBucketAssignments,
       getUserAssignments,
-      getUserBucketPermission
+      getUserBucketPermission,
     }}>
       {children}
     </BucketAssignmentContext.Provider>

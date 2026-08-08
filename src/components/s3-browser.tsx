@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatBytes } from "@/lib/utils";
-import { Folder, File, HardDrive, LogOut, Home, Loader2, FileImage, FileText, Music, Video, Search, Download, Upload, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Folder, File, HardDrive, LogOut, Home, Loader2, FileImage, FileText, Music, Video, Search, Download, Upload, ChevronsLeft, ChevronsRight, AlertCircle, RefreshCw, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import ObjectDetails from "./object-details";
 import UploadDialog from "./upload-dialog";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
@@ -29,7 +30,7 @@ import {
 } from "./ui/pagination";
 
 type CommonPrefix = { Prefix?: string };
-type S3Item = (_Object | CommonPrefix) & { type: 'file' | 'folder' };
+type S3Item = (_Object | CommonPrefix) & { type: 'file' | 'folder'; scanStatus?: 'unscanned' | 'clean' };
 
 const getFileIcon = (key?: string) => {
   if (!key) return <File className="h-5 w-5 text-muted-foreground" />;
@@ -88,6 +89,7 @@ export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [sortOrder, setSortOrder] = useState<'none' | 'newest' | 'oldest'>('none');
   const [goToPage, setGoToPage] = useState('');
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Reset prefix if config changes
   useEffect(() => {
@@ -98,6 +100,7 @@ export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
     setIsLoading(true);
     setIsLoadingMore(false);
     setItems([]);
+    setLoadError(null);
 
     try {
       // Fast first paint: fetch up to 100 items immediately
@@ -124,17 +127,13 @@ export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
       }
     } catch (e: any) {
       const description = e.message || "Failed to fetch bucket contents. Please check credentials and bucket name.";
-      toast({
-        variant: "destructive",
-        title: "Connection Error",
-        description: description,
-        duration: 5000,
-      });
+      // Keep the user on the bucket view and offer a retry rather than bouncing
+      // them back to the list (where the error message would be lost).
+      setLoadError(description);
       console.error(e);
       setIsLoading(false);
-      onDisconnect();
     }
-  }, [config, toast, onDisconnect]);
+  }, [config]);
 
   useEffect(() => {
     fetchItems(prefix);
@@ -257,8 +256,8 @@ export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
   const isAnyVisibleSelected = paginatedItems.some(item => selectedKeys.has((item.type === 'folder' ? (item as CommonPrefix).Prefix : (item as _Object).Key)!));
 
   return (
-    <Card className="w-full h-[95vh] max-w-7xl shadow-lg flex flex-col">
-      <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between border-b p-4 gap-4">
+    <Card className="w-full flex-1 min-h-0 shadow-sm flex flex-col">
+      <CardHeader className="flex flex-col md:flex-row md:flex-wrap items-start md:items-center justify-between border-b p-4 gap-4">
         <div className="flex items-center gap-4 w-full md:w-auto">
           <HardDrive className="h-6 w-6 text-primary" />
           <div className="flex flex-col gap-1">
@@ -333,7 +332,23 @@ export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
         </div>
       </CardHeader>
       <CardContent className="p-0 flex-grow overflow-y-auto relative">
-        {isLoading ? (
+        {loadError ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8 text-center">
+            <AlertCircle className="h-10 w-10 text-destructive" />
+            <div>
+              <p className="font-semibold text-foreground">Couldn&apos;t load this bucket</p>
+              <p className="text-sm text-muted-foreground max-w-md mt-1">{loadError}</p>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={() => fetchItems(prefix)}>
+                <RefreshCw className="mr-2 h-4 w-4" /> Retry
+              </Button>
+              <Button variant="outline" onClick={onDisconnect}>
+                <LogOut className="mr-2 h-4 w-4" /> Back to buckets
+              </Button>
+            </div>
+          </div>
+        ) : isLoading ? (
           <div className="absolute inset-0 flex items-center justify-center bg-card/50 backdrop-blur-sm z-20">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
           </div>
@@ -387,7 +402,41 @@ export default function S3Browser({ config, onDisconnect }: S3BrowserProps) {
                         setSelectedItem(item);
                       }
                     }}>
-                      {item.type === 'folder' ? (item as CommonPrefix).Prefix?.replace(prefix, '').replace('/', '') : (item as _Object).Key?.replace(prefix, '')}
+                      <span className="flex items-center gap-2">
+                        {item.type === 'folder' ? (item as CommonPrefix).Prefix?.replace(prefix, '').replace('/', '') : (item as _Object).Key?.replace(prefix, '')}
+                        {item.type === 'file' && item.scanStatus === 'unscanned' && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <AlertTriangle
+                                  className="h-4 w-4 shrink-0 text-amber-500"
+                                  onClick={(e) => e.stopPropagation()}
+                                  aria-label="Not scanned for malware"
+                                />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                Not scanned for malware — the scanner was unavailable at upload.
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        {item.type === 'file' && item.scanStatus === 'clean' && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <ShieldCheck
+                                  className="h-4 w-4 shrink-0 text-green-600"
+                                  onClick={(e) => e.stopPropagation()}
+                                  aria-label="Scanned for malware — clean"
+                                />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                Scanned for malware at upload — no threats found.
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </span>
                     </TableCell>
                     <TableCell>
                       {item.type === 'file' && (item as _Object).LastModified ? new Date((item as _Object).LastModified!).toLocaleString() : '—'}

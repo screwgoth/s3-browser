@@ -1,6 +1,11 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '50mb', // Acceptable formats: '10mb', '500kb', or bytes as a number
+    },
+  },
   /* config options here */
   output: 'standalone',
   typescript: {
@@ -29,6 +34,7 @@ const nextConfig: NextConfig = {
     'pg',
     'pg-native',
     'mock-aws-s3',
+    'clamscan',
   ],
   images: {
     remotePatterns: [
@@ -60,6 +66,7 @@ const nextConfig: NextConfig = {
       },
     ]
   },
+
 };
 
 export default nextConfig;

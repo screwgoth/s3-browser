@@ -1,9 +1,9 @@
 "use client";
 
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
-import { useBucketAssignment, type BucketPermission } from './BucketAssignmentContext';
 import { recordBucketEvent } from '@/actions/audit-record';
+import type { BucketPermission } from './BucketAssignmentContext';
 
 export interface Bucket {
   id: string;
@@ -16,16 +16,17 @@ export interface Bucket {
   status: 'untested' | 'connected' | 'failed';
   owner?: string;
   folder?: string;
+  maxUploadSize?: number | null;
 }
 
 export interface BucketWithPermission extends Bucket {
-  permission?: BucketPermission; // Permission for current user (if assigned)
-  isOwner: boolean; // True if current user is the owner
+  permission?: BucketPermission;
+  isOwner: boolean;
 }
 
 interface BucketContextType {
   buckets: BucketWithPermission[];
-  allBuckets: Bucket[]; // For admin to see all buckets
+  allBuckets: Bucket[];
   selectedBucket: BucketWithPermission | null;
   addBucket: (bucket: Omit<Bucket, 'id'>) => void;
   updateBucket: (id: string, bucket: Omit<Bucket, 'id'>) => void;
@@ -36,155 +37,214 @@ interface BucketContextType {
   canEditBucket: (bucketId: string) => boolean;
   canDeleteBucket: (bucketId: string) => boolean;
   canUploadToBucket: (bucketId: string) => boolean;
+  refreshBuckets: () => Promise<void>;
+  /** True while the authenticated user's buckets have not yet been fetched. */
+  isLoading: boolean;
+  /** Set when the last bucket fetch failed for a reason other than auth (401). */
+  loadError: boolean;
 }
 
 const BucketContext = createContext<BucketContextType | undefined>(undefined);
 
+/** Map a raw API/DB bucket row to the context's Bucket shape. */
+function mapRow(row: any, statusMap: Record<string, Bucket['status']>): BucketWithPermission {
+  const id = String(row.id);
+  return {
+    id,
+    name: row.alias,
+    bucket: row.bucket_name,
+    region: row.region,
+    accessKeyId: row.access_key_id,
+    secretAccessKey: row.secret_access_key,
+    sessionToken: row.session_token,
+    folder: row.root_folder,
+    maxUploadSize: row.max_upload_size,
+    owner: row.owner_username,
+    status: statusMap[id] ?? 'untested',
+    isOwner: row.is_owned ?? true,
+    permission: row.permission ?? undefined,
+  };
+}
+
 export function BucketProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const { getUserAssignments, getUserBucketPermission } = useBucketAssignment();
-  const [allBucketsData, setAllBucketsData] = useState<Bucket[]>([]);
+  const [rawRows, setRawRows] = useState<any[]>([]);
+  const [statusMap, setStatusMap] = useState<Record<string, Bucket['status']>>({});
   const [selectedBucket, setSelectedBucket] = useState<BucketWithPermission | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
+  // Username the current rawRows were fetched for. Buckets are considered
+  // "loading" whenever there is an authenticated user whose buckets have not
+  // yet been fetched — this lets the UI show a spinner instead of a
+  // misleading empty list while the fetch is in flight.
+  const [fetchedFor, setFetchedFor] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const storage = window.localStorage;
-        if (storage && typeof storage.getItem === 'function') {
-          const storedBuckets = storage.getItem('s3-buckets');
-          if (storedBuckets) {
-            setAllBucketsData(JSON.parse(storedBuckets));
-          }
-        }
-      } catch (e) {
-        console.error("Failed to load buckets from localStorage", e);
-        setAllBucketsData([]);
+  const refreshBuckets = useCallback(async () => {
+    if (!user) { setRawRows([]); setFetchedFor(null); return; }
+    try {
+      const res = await fetch('/api/buckets', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setRawRows(data.buckets ?? []);
+        setLoadError(false);
+      } else if (res.status === 401) {
+        setRawRows([]);
+        setLoadError(false);
+      } else {
+        // A non-auth failure (5xx, etc.) must be distinguishable from "no
+        // buckets" so the UI can show an error+retry instead of an empty state.
+        setLoadError(true);
       }
+    } catch (e) {
+      console.error('BucketContext: failed to load buckets', e);
+      setLoadError(true);
+    } finally {
+      setFetchedFor(user.username);
     }
-    setIsLoaded(true);
-  }, []);
+  }, [user?.username]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Loading = there is a user but rawRows haven't been fetched for them yet.
+  const isLoading = !!user && fetchedFor !== user.username;
+
+  // Reload whenever the logged-in user changes.
+  useEffect(() => { refreshBuckets(); }, [refreshBuckets]);
+
+  // Reload when the browser tab regains focus so newly-assigned buckets appear
+  // without the user needing to manually refresh the page.
   useEffect(() => {
-    if (isLoaded && typeof window !== 'undefined') {
-      try {
-        const storage = window.localStorage;
-        if (storage && typeof storage.setItem === 'function') {
-          storage.setItem('s3-buckets', JSON.stringify(allBucketsData));
-        }
-      } catch (e) {
-        console.error("Failed to save buckets to localStorage", e);
-      }
-    }
-  }, [allBucketsData, isLoaded]);
+    const onVisible = () => { if (document.visibilityState === 'visible') refreshBuckets(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [refreshBuckets]);
 
-  // Calculate user-visible buckets with permissions
-  const userBuckets: BucketWithPermission[] = React.useMemo(() => {
-    if (!user) return [];
+  const userBuckets: BucketWithPermission[] = React.useMemo(
+    () => rawRows.map(r => mapRow(r, statusMap)),
+    [rawRows, statusMap]
+  );
 
-    const isAdmin = user.role === 'admin';
-    const userAssignments = getUserAssignments(user.username);
-    const assignedBucketIds = new Set(userAssignments.map(a => a.bucketId));
-
-    return allBucketsData
-      .filter(b => {
-        // Admins see every bucket
-        if (isAdmin) return true;
-        // Users see buckets they own
-        if (b.owner === user.username) return true;
-        // Users see buckets assigned to them
-        if (assignedBucketIds.has(b.id)) return true;
-        return false;
-      })
-      .map(b => ({
-        ...b,
-        isOwner: b.owner === user.username,
-        permission: getUserBucketPermission(b.id, user.username) || undefined
-      }));
-  }, [allBucketsData, user, getUserAssignments, getUserBucketPermission]);
+  // allBuckets exposes the same rows as plain Bucket[] (no isOwner/permission)
+  // used by admin-only pages such as bucket-assignments.
+  const allBuckets: Bucket[] = React.useMemo(
+    () => rawRows.map(r => ({
+      id: String(r.id),
+      name: r.alias,
+      bucket: r.bucket_name,
+      region: r.region,
+      accessKeyId: r.access_key_id,
+      secretAccessKey: r.secret_access_key,
+      sessionToken: r.session_token,
+      folder: r.root_folder,
+      maxUploadSize: r.max_upload_size,
+      owner: r.owner_username,
+      status: statusMap[String(r.id)] ?? 'untested',
+    })),
+    [rawRows, statusMap]
+  );
 
   const addBucket = (bucket: Omit<Bucket, 'id'>) => {
     if (!user) return;
-    // Only bucket-creator and admin can create buckets
-    if (!['bucket-creator', 'admin'].includes(user.role ?? '')) {
-      console.warn('User does not have permission to create buckets');
-      return;
-    }
-    const newBucket: Bucket = {
-      ...bucket,
-      id: crypto.randomUUID(),
-      owner: user.username
-    };
-    setAllBucketsData(prev => [...prev, newBucket]);
-    recordBucketEvent('bucket.created', newBucket.id, {
-      name: newBucket.name,
-      bucket: newBucket.bucket,
-      region: newBucket.region,
-    });
+    (async () => {
+      const res = await fetch('/api/buckets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          alias: bucket.name,
+          bucket_name: bucket.bucket,
+          region: bucket.region,
+          root_folder: bucket.folder,
+          access_key_id: bucket.accessKeyId,
+          secret_access_key: bucket.secretAccessKey,
+          session_token: bucket.sessionToken,
+          max_upload_size: bucket.maxUploadSize,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        await refreshBuckets();
+        recordBucketEvent('bucket.created', String(data.bucket?.id ?? ''), {
+          name: bucket.name,
+          bucket: bucket.bucket,
+          region: bucket.region,
+        });
+      }
+    })();
   };
 
   const updateBucket = (id: string, updatedBucket: Omit<Bucket, 'id'>) => {
-    const existing = allBucketsData.find(b => b.id === id);
-    setAllBucketsData(prev => prev.map(b =>
-      b.id === id ? { ...updatedBucket, id, owner: b.owner } : b
-    ));
-    recordBucketEvent('bucket.updated', id, {
-      name: updatedBucket.name,
-      bucket: updatedBucket.bucket,
-      region: updatedBucket.region,
-      previous_name: existing?.name,
-    });
+    const existing = rawRows.find(r => String(r.id) === id);
+    (async () => {
+      const res = await fetch(`/api/buckets/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          alias: updatedBucket.name,
+          bucket_name: updatedBucket.bucket,
+          region: updatedBucket.region,
+          root_folder: updatedBucket.folder,
+          access_key_id: updatedBucket.accessKeyId,
+          secret_access_key: updatedBucket.secretAccessKey,
+          session_token: updatedBucket.sessionToken,
+          max_upload_size: updatedBucket.maxUploadSize,
+        }),
+      });
+      if (res.ok) {
+        await refreshBuckets();
+        recordBucketEvent('bucket.updated', id, {
+          name: updatedBucket.name,
+          bucket: updatedBucket.bucket,
+          region: updatedBucket.region,
+          previous_name: existing?.alias,
+        });
+      }
+    })();
   };
 
   const deleteBucket = (id: string) => {
-    const existing = allBucketsData.find(b => b.id === id);
-    setAllBucketsData(prev => prev.filter(b => b.id !== id));
-    if (selectedBucket?.id === id) {
-      setSelectedBucket(null);
-    }
-    if (existing) {
-      recordBucketEvent('bucket.deleted', id, {
-        name: existing.name,
-        bucket: existing.bucket,
-        region: existing.region,
+    const existing = rawRows.find(r => String(r.id) === id);
+    (async () => {
+      const res = await fetch(`/api/buckets/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
       });
-    }
+      if (res.ok) {
+        if (selectedBucket?.id === id) setSelectedBucket(null);
+        await refreshBuckets();
+        if (existing) {
+          recordBucketEvent('bucket.deleted', id, {
+            name: existing.alias,
+            bucket: existing.bucket_name,
+            region: existing.region,
+          });
+        }
+      }
+    })();
   };
 
-  const getBucketById = (id: string): BucketWithPermission | undefined => {
-    return userBuckets.find(b => b.id === id);
-  };
+  const getBucketById = (id: string): BucketWithPermission | undefined =>
+    userBuckets.find(b => b.id === id);
 
-  const setBucketStatus = (id: string, status: Bucket['status']) => {
-    setAllBucketsData(prev => prev.map(b => b.id === id ? { ...b, status } : b));
-  };
+  const setBucketStatus = (id: string, status: Bucket['status']) =>
+    setStatusMap(prev => ({ ...prev, [id]: status }));
 
   const canEditBucket = (bucketId: string): boolean => {
     if (!user) return false;
     if (user.role === 'admin') return true;
-    const bucket = getBucketById(bucketId);
-    if (!bucket) return false;
-    return bucket.isOwner;
+    return getBucketById(bucketId)?.isOwner ?? false;
   };
 
   const canDeleteBucket = (bucketId: string): boolean => {
     if (!user) return false;
     if (user.role === 'admin') return true;
-    const bucket = getBucketById(bucketId);
-    if (!bucket) return false;
-    return bucket.isOwner;
+    return getBucketById(bucketId)?.isOwner ?? false;
   };
 
   const canUploadToBucket = (bucketId: string): boolean => {
     if (!user) return false;
-    const bucket = getBucketById(bucketId);
-    if (!bucket) return false;
-    // Role always wins — viewer can never upload
-    const role = user.role ?? 'viewer';
-    return ['uploader', 'bucket-creator', 'admin'].includes(role);
+    return ['uploader', 'bucket-creator', 'admin'].includes(user.role ?? 'viewer');
   };
 
-  // Deselect if the current bucket is no longer in the user's list
+  // Drop selected bucket if it disappears from the user's list.
   useEffect(() => {
     if (selectedBucket && !userBuckets.some(b => b.id === selectedBucket.id)) {
       setSelectedBucket(null);
@@ -192,9 +252,9 @@ export function BucketProvider({ children }: { children: React.ReactNode }) {
   }, [userBuckets, selectedBucket]);
 
   return (
-    <BucketContext.Provider value={{ 
+    <BucketContext.Provider value={{
       buckets: userBuckets,
-      allBuckets: allBucketsData,
+      allBuckets,
       selectedBucket,
       addBucket,
       updateBucket,
@@ -204,7 +264,10 @@ export function BucketProvider({ children }: { children: React.ReactNode }) {
       setBucketStatus,
       canEditBucket,
       canDeleteBucket,
-      canUploadToBucket
+      canUploadToBucket,
+      refreshBuckets,
+      isLoading,
+      loadError,
     }}>
       {children}
     </BucketContext.Provider>

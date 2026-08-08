@@ -8,6 +8,9 @@ import type { Bucket } from "@/context/BucketContext";
 import JSZip from "jszip";
 import { getCurrentUserOptional } from "@/lib/session";
 import { createAuditLog } from "@/lib/audit";
+import { effectiveMaxUploadSize } from "@/lib/upload-limits";
+import { scanBuffer } from "@/lib/malware-scan";
+import { markObjectUnscanned, clearUnscannedFlag, getUnscannedKeys, markObjectClean, clearCleanFlag, getCleanKeys } from "@/lib/scan-status";
 
 const S3ConfigSchema = z.object({
   accessKeyId: z.string().optional(),
@@ -40,13 +43,13 @@ export async function listObjects(
   options?: { limit?: number; continuationToken?: string }
 ): Promise<{
   folders: { Prefix: string }[];
-  files: { Key?: string; LastModified?: Date; Size?: number }[];
+  files: { Key?: string; LastModified?: Date; Size?: number; scanStatus?: 'unscanned' | 'clean' }[];
   nextContinuationToken?: string;
   isComplete: boolean;
 }> {
   const s3Client = getS3Client(config);
   const folders: { Prefix: string }[] = [];
-  const files: { Key?: string; LastModified?: Date; Size?: number }[] = [];
+  const files: { Key?: string; LastModified?: Date; Size?: number; scanStatus?: 'unscanned' | 'clean' }[] = [];
   let continuationToken: string | undefined = options?.continuationToken;
 
   do {
@@ -73,6 +76,28 @@ export async function listObjects(
     // When a limit is set, only fetch one page then return
     if (options?.limit !== undefined) break;
   } while (continuationToken);
+
+  // Annotate files with their malware-scan status: 'unscanned' (fail-open) or
+  // 'clean' (scanned OK). Files in neither set are left undefined (unknown).
+  const bucketId = Number(config.id);
+  if (!Number.isNaN(bucketId) && files.length > 0) {
+    try {
+      const keys = files.map((f) => f.Key).filter((k): k is string => !!k);
+      const [unscanned, clean] = await Promise.all([
+        getUnscannedKeys(bucketId, keys),
+        getCleanKeys(bucketId, keys),
+      ]);
+      if (unscanned.size > 0 || clean.size > 0) {
+        for (const f of files) {
+          if (!f.Key) continue;
+          if (unscanned.has(f.Key)) f.scanStatus = 'unscanned';
+          else if (clean.has(f.Key)) f.scanStatus = 'clean';
+        }
+      }
+    } catch (e) {
+      console.error('[listObjects] Failed to load scan status:', e);
+    }
+  }
 
   return { folders, files, nextContinuationToken: continuationToken, isComplete: !continuationToken };
 }
@@ -289,12 +314,12 @@ export async function uploadObject(
     onProgress?: (progress: number) => void
 ): Promise<{ success: boolean; message: string }> {
     try {
-        // Validate file size (100MB limit)
-        const maxSize = 100 * 1024 * 1024; // 100MB in bytes
+        // Validate file size against the bucket's configured limit (default 10MB).
+        const maxSize = effectiveMaxUploadSize(config.maxUploadSize);
         if (file.size > maxSize) {
             return {
                 success: false,
-                message: `File size (${(file.size / (1024 * 1024)).toFixed(2)}MB) exceeds the 100MB limit.`
+                message: `File size (${(file.size / (1024 * 1024)).toFixed(2)}MB) exceeds the ${(maxSize / (1024 * 1024)).toFixed(0)}MB limit for this bucket.`
             };
         }
 
@@ -303,6 +328,35 @@ export async function uploadObject(
         // Convert File to ArrayBuffer
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
+
+        const user = await getCurrentUserOptional();
+        const bucketId = Number(config.id);
+
+        // Malware scan BEFORE upload. Infected files are rejected outright;
+        // if the scanner is unavailable we fail open (see scanBuffer).
+        const scan = await scanBuffer(buffer);
+        if (scan.status === 'infected') {
+            await createAuditLog({
+              user_id: user?.id,
+              username: user?.username,
+              action: 'file.upload.blocked',
+              resource_type: 's3_object',
+              resource_id: key,
+              details: {
+                bucket: config.bucket,
+                key,
+                size_bytes: file.size,
+                reason: 'malware_detected',
+                viruses: scan.viruses ?? [],
+              },
+              status: 'failure',
+            });
+            const names = scan.viruses?.length ? ` (${scan.viruses.join(', ')})` : '';
+            return {
+                success: false,
+                message: `File "${file.name}" failed the malware scan${names} and was not uploaded.`,
+            };
+        }
 
         const command = new PutObjectCommand({
             Bucket: config.bucket,
@@ -314,7 +368,26 @@ export async function uploadObject(
 
         await s3Client.send(command);
 
-        const user = await getCurrentUserOptional();
+        // Track scan status so the browser can flag files. The unscanned and
+        // clean records are mutually exclusive — a re-upload flips one to the
+        // other, so we always clear the opposite flag.
+        if (!Number.isNaN(bucketId)) {
+            try {
+                if (scan.status === 'unscanned') {
+                    await markObjectUnscanned(bucketId, key, scan.error);
+                    await clearCleanFlag(bucketId, key);
+                } else {
+                    await markObjectClean(bucketId, key);
+                    await clearUnscannedFlag(bucketId, key);
+                }
+            } catch (e) {
+                console.error('[Upload] Failed to record scan status:', e);
+            }
+        }
+        if (scan.status === 'unscanned') {
+            console.warn(`[Upload] Object uploaded WITHOUT malware scan (fail-open): ${config.bucket}/${key} — ${scan.error ?? 'scanner unavailable'}`);
+        }
+
         await createAuditLog({
           user_id: user?.id,
           username: user?.username,
@@ -326,13 +399,18 @@ export async function uploadObject(
             key,
             size_bytes: file.size,
             content_type: file.type || 'application/octet-stream',
+            scan_status: scan.status,
+            ...(scan.status === 'unscanned' ? { scan_error: scan.error } : {}),
           },
           status: 'success',
         });
 
         return {
             success: true,
-            message: `File "${file.name}" uploaded successfully.`
+            message:
+              scan.status === 'unscanned'
+                ? `File "${file.name}" uploaded, but could not be malware-scanned.`
+                : `File "${file.name}" uploaded successfully.`,
         };
     } catch (error: any) {
         console.error("Upload error:", error);

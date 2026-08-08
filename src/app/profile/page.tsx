@@ -90,7 +90,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen skeu-bg">
+    <div className="min-h-screen skeu-bg app-content">
       <AppSidebar title="Profile" titleIcon={<UserIcon className="h-5 w-5" />} />
 
       <main className="container mx-auto p-6 max-w-2xl">

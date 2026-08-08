@@ -41,6 +41,11 @@ Wait for: "🎉 Database setup completed!"
 ```bash
 npm run dev
 ```
+Or if you want to build
+```bash
+npm run build
+pm2 start npm --name "s3-browser" -- run start
+```
 
 ### 6️⃣ Login
 Open http://localhost:5000

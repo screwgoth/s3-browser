@@ -3,11 +3,11 @@
 import React, { useState, useCallback, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Upload, X, File, AlertCircle, CheckCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { uploadObject } from "@/actions/s3";
 import type { BucketWithPermission } from "@/context/BucketContext";
+import { effectiveMaxUploadSize } from "@/lib/upload-limits";
 
 interface UploadDialogProps {
   open: boolean;
@@ -45,10 +45,12 @@ export default function UploadDialog({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const maxSize = effectiveMaxUploadSize(bucketConfig.maxUploadSize);
+  const maxSizeMb = (maxSize / (1024 * 1024)).toFixed(0);
+
   const validateFile = (file: File): string | null => {
-    const maxSize = 100 * 1024 * 1024; // 100MB
     if (file.size > maxSize) {
-      return `File "${file.name}" is too large. Maximum size is 100MB.`;
+      return `File "${file.name}" is too large. Maximum size is ${maxSizeMb}MB.`;
     }
     return null;
   };
@@ -151,13 +153,13 @@ export default function UploadDialog({
   const getStatusIcon = (status: UploadFile['status']) => {
     switch (status) {
       case 'success':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CheckCircle className="h-4 w-4 text-success" />;
       case 'error':
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
+        return <AlertCircle className="h-4 w-4 text-destructive" />;
       case 'uploading':
-        return <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />;
+        return <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />;
       default:
-        return <File className="h-4 w-4 text-gray-500" />;
+        return <File className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
@@ -165,12 +167,12 @@ export default function UploadDialog({
   const hasErrors = uploadFiles.some(uf => uf.status === 'error');
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(o) => { if (!isUploading) onOpenChange(o); }}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Upload Files</DialogTitle>
           <DialogDescription>
-            Upload files to {currentPrefix || 'root'} (Maximum 100MB per file)
+            Upload files to {currentPrefix || 'root'} (Maximum {maxSizeMb}MB per file)
           </DialogDescription>
         </DialogHeader>
 
@@ -178,21 +180,21 @@ export default function UploadDialog({
           {/* Drop Zone */}
           <div
             className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-              dragActive 
-                ? 'border-blue-500 bg-blue-50' 
-                : 'border-gray-300 hover:border-gray-400'
+              dragActive
+                ? 'border-primary bg-secondary'
+                : 'border-input hover:border-muted-foreground'
             }`}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
             onDrop={handleDrop}
           >
-            <Upload className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <p className="text-lg font-medium text-gray-700 mb-2">
+            <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-lg font-medium text-foreground mb-2">
               Drag and drop files here, or click to select
             </p>
-            <p className="text-sm text-gray-500 mb-4">
-              Maximum file size: 100MB
+            <p className="text-sm text-muted-foreground mb-4">
+              Maximum file size: {maxSizeMb}MB
             </p>
             <Button
               type="button"
@@ -234,12 +236,16 @@ export default function UploadDialog({
                     {getStatusIcon(uploadFile.status)}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{uploadFile.file.name}</p>
-                      <p className="text-xs text-gray-500">{formatFileSize(uploadFile.file.size)}</p>
+                      <p className="text-xs text-muted-foreground">{formatFileSize(uploadFile.file.size)}</p>
                       {uploadFile.status === 'uploading' && (
-                        <Progress value={uploadFile.progress} className="mt-2 h-1" />
+                        // Indeterminate bar — the server action doesn't report byte
+                        // progress, so show continuous activity rather than a stuck 0%.
+                        <div className="mt-2 h-1 w-full overflow-hidden rounded bg-muted">
+                          <div className="h-full w-1/3 rounded bg-primary animate-indeterminate" />
+                        </div>
                       )}
                       {uploadFile.error && (
-                        <p className="text-xs text-red-500 mt-1">{uploadFile.error}</p>
+                        <p className="text-xs text-destructive mt-1">{uploadFile.error}</p>
                       )}
                     </div>
                     <Button

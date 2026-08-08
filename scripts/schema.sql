@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS buckets (
   access_key_id TEXT,
   secret_access_key TEXT,
   session_token TEXT,
+  max_upload_size BIGINT,          -- per-bucket max file size in bytes; NULL = app default (10MB)
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -38,6 +39,32 @@ CREATE TABLE IF NOT EXISTS buckets (
 
 CREATE INDEX idx_buckets_user_id ON buckets(user_id);
 CREATE INDEX idx_buckets_alias ON buckets(alias);
+
+-- Unscanned Objects Table (fail-open malware scan: records objects uploaded
+-- without a successful scan so the UI can flag them). Absence of a row = clean/normal.
+CREATE TABLE IF NOT EXISTS unscanned_objects (
+  id SERIAL PRIMARY KEY,
+  bucket_id INTEGER NOT NULL REFERENCES buckets(id) ON DELETE CASCADE,
+  object_key TEXT NOT NULL,
+  reason TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(bucket_id, object_key)
+);
+
+CREATE INDEX idx_unscanned_objects_lookup ON unscanned_objects(bucket_id, object_key);
+
+-- Scanned-Clean Objects Table (positive record: object was malware-scanned and
+-- came back clean, so the UI can show a "safe" icon). Absence of a row here AND
+-- in unscanned_objects = unknown (e.g. uploaded before scanning existed).
+CREATE TABLE IF NOT EXISTS scanned_clean_objects (
+  id SERIAL PRIMARY KEY,
+  bucket_id INTEGER NOT NULL REFERENCES buckets(id) ON DELETE CASCADE,
+  object_key TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(bucket_id, object_key)
+);
+
+CREATE INDEX idx_scanned_clean_objects_lookup ON scanned_clean_objects(bucket_id, object_key);
 
 -- Bucket Assignments Table (for sharing buckets between users)
 CREATE TABLE IF NOT EXISTS bucket_assignments (

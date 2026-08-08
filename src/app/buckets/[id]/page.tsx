@@ -4,8 +4,9 @@ import { useBucket } from "@/context/BucketContext";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, useParams } from "next/navigation";
 import S3Browser from "@/components/s3-browser";
+import { AppSidebar } from "@/components/app-sidebar";
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, HardDrive } from "lucide-react";
 
 export default function BucketBrowserPage() {
     const router = useRouter();
@@ -46,8 +47,11 @@ export default function BucketBrowserPage() {
     }
     
     return (
-        <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4 md:p-2">
-            <S3Browser config={bucket} onDisconnect={handleDisconnect} />
-        </main>
+        <div className="min-h-screen skeu-bg app-content flex flex-col">
+            <AppSidebar title={bucket.name} titleIcon={<HardDrive className="h-5 w-5 text-primary" />} />
+            <main className="flex-1 flex flex-col min-h-0 p-4 md:p-6">
+                <S3Browser config={bucket} onDisconnect={handleDisconnect} />
+            </main>
+        </div>
     );
 }

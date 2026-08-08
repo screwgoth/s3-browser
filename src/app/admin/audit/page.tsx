@@ -244,7 +244,7 @@ export default function AuditLogPage() {
   }
 
   return (
-    <div className="min-h-screen skeu-bg">
+    <div className="min-h-screen skeu-bg app-content">
       <AppSidebar title="Audit Trail" titleIcon={<ShieldCheck className="h-5 w-5" />} />
       <main className="p-6 md:p-10 max-w-7xl mx-auto space-y-6">
 

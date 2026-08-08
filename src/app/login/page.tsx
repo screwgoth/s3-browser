@@ -15,10 +15,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { SiteLogo } from "@/components/site-logo";
+import { getBrandingSettings } from "@/actions/settings";
+
+// Defaults match the previous hardcoded copy so there's no flash before the
+// configured branding loads from the server action.
+const DEFAULT_BRANDING = {
+  title: "S3 Navigator",
+  subtitle: "Secure S3 bucket management",
+  footer: "Secure S3 Bucket Management",
+};
 
 const formSchema = z.object({
   username: z.string().min(1, { message: "Username is required." }),
@@ -30,8 +39,13 @@ type LoginFormValues = z.infer<typeof formSchema>;
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [branding, setBranding] = useState(DEFAULT_BRANDING);
   const { toast } = useToast();
   const router = useRouter();
+
+  useEffect(() => {
+    getBrandingSettings().then(setBranding).catch(() => { /* keep defaults */ });
+  }, []);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(formSchema),
@@ -57,21 +71,11 @@ export default function LoginPage() {
       if (response.ok) {
         console.log("[LOGIN] Login successful, user:", data.user);
 
-        toast({
-          title: "Login Successful",
-          description: "Welcome back!",
-          duration: 1000,
-        });
-
-        // Check if password change is required and do full page reload
+        // The session cookie is already set by the time the fetch resolves, so
+        // redirect immediately — no artificial delay. A full-page navigation
+        // ensures the cookie is in place before the next page's auth check.
         const redirectPath = data.user.must_change_password ? '/change-password' : '/';
-        console.log("[LOGIN] Redirecting to:", redirectPath);
-
-        // Use window.location to ensure cookie is properly set before next page loads
-        setTimeout(() => {
-          console.log("[LOGIN] Executing redirect");
-          window.location.href = redirectPath;
-        }, 1000);
+        window.location.href = redirectPath;
       } else {
         toast({
           variant: "destructive",
@@ -97,34 +101,14 @@ export default function LoginPage() {
         <SiteLogo size="lg" />
       </div>
 
-      {/* 3D ASCII Art Title */}
+      {/* Product title */}
       <div className="mb-8 text-center">
-        <pre className="text-[9px] sm:text-[11px] md:text-sm font-mono font-bold leading-tight select-none">
-          <span className="text-blue-600 dark:text-blue-400">
-{`
-   ██████╗ ██████╗     ██████╗ ██████╗  ██████╗ ██╗    ██╗███████╗███████╗██████╗ 
-  ██╔════╝ ╚════██╗    ██╔══██╗██╔══██╗██╔═══██╗██║    ██║██╔════╝██╔════╝██╔══██╗
-  ╚█████╗   █████╔╝    ██████╔╝██████╔╝██║   ██║██║ █╗ ██║███████╗█████╗  ██████╔╝
-   ╚═══██╗  ╚═══██╗    ██╔══██╗██╔══██╗██║   ██║██║███╗██║╚════██║██╔══╝  ██╔══██╗
-  ██████╔╝ ██████╔╝    ██████╔╝██║  ██║╚██████╔╝╚███╔███╔╝███████║███████╗██║  ██║
-  ╚═════╝  ╚═════╝     ╚═════╝ ╚═╝  ╚═╝ ╚═════╝  ╚══╝╚══╝ ╚══════╝╚══════╝╚═╝  ╚═╝
-`}
-          </span>
-          <span className="text-indigo-500/50 dark:text-indigo-400/30 absolute top-[2px] left-[2px] -z-10">
-{`
-   ██████╗ ██████╗     ██████╗ ██████╗  ██████╗ ██╗    ██╗███████╗███████╗██████╗ 
-  ██╔════╝ ╚════██╗    ██╔══██╗██╔══██╗██╔═══██╗██║    ██║██╔════╝██╔════╝██╔══██╗
-  ╚█████╗   █████╔╝    ██████╔╝██████╔╝██║   ██║██║ █╗ ██║███████╗█████╗  ██████╔╝
-   ╚═══██╗  ╚═══██╗    ██╔══██╗██╔══██╗██║   ██║██║███╗██║╚════██║██╔══╝  ██╔══██╗
-  ██████╔╝ ██████╔╝    ██████╔╝██║  ██║╚██████╔╝╚███╔███╔╝███████║███████╗██║  ██║
-  ╚═════╝  ╚═════╝     ╚═════╝ ╚═╝  ╚═╝ ╚═════╝  ╚══╝╚══╝ ╚══════╝╚══════╝╚═╝  ╚═╝
-`}
-          </span>
-        </pre>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">{branding.title}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{branding.subtitle}</p>
       </div>
 
       <Card className="w-full max-w-sm skeu-login-card border-0">
-        <CardHeader className="space-y-1 rounded-t-2xl border-b bg-gradient-to-b from-white/80 to-slate-50/80">
+        <CardHeader className="space-y-1 border-b">
           <CardTitle className="text-2xl font-bold text-center">Login</CardTitle>
           <CardDescription className="text-center">Enter your credentials to continue</CardDescription>
         </CardHeader>
@@ -142,7 +126,7 @@ export default function LoginPage() {
                         placeholder="Enter username" 
                         {...field}
                         autoComplete="username"
-                        className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800"
+                        className="bg-card"
                       />
                     </FormControl>
                     <FormMessage />
@@ -162,7 +146,7 @@ export default function LoginPage() {
                           placeholder="Enter password"
                           autoComplete="current-password"
                           {...field}
-                          className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800"
+                          className="bg-card"
                         />
                         <Button
                           type="button"
@@ -194,9 +178,8 @@ export default function LoginPage() {
       </Card>
 
       {/* Subtle footer text */}
-      <div className="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">
-        <p>Secure S3 Bucket Management</p>
-        <p className="text-xs mt-1">Default: admin / admin (change password on first login)</p>
+      <div className="mt-8 text-center text-sm text-muted-foreground">
+        <p>{branding.footer}</p>
       </div>
     </main>
   );

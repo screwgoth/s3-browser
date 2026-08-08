@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateSession } from '@/lib/auth';
-import { getAllBuckets, getBucketsByUserId, createBucket, getBucketCount } from '@/lib/buckets';
+import { getAllBuckets, getBucketsByUserId, getBucketsAssignedToUser, createBucket, getBucketCount } from '@/lib/buckets';
+import { clampUploadSize } from '@/lib/upload-limits';
 import { cookies } from 'next/headers';
 
 // GET /api/buckets - Get all buckets for current user
@@ -19,13 +20,27 @@ export async function GET(request: NextRequest) {
     }
 
     const isAdmin = user.role === 'admin';
-    const buckets = isAdmin ? await getAllBuckets() : await getBucketsByUserId(user.id);
-    const count = isAdmin ? buckets.length : await getBucketCount(user.id);
+    let buckets;
 
-    return NextResponse.json({
-      buckets,
-      count,
-    });
+    if (isAdmin) {
+      const all = await getAllBuckets(); // includes owner_username via JOIN
+      buckets = all.map(b => ({ ...b, is_owned: b.user_id === user.id, permission: null }));
+    } else {
+      const owned = await getBucketsByUserId(user.id);
+      let assigned: Awaited<ReturnType<typeof getBucketsAssignedToUser>> = [];
+      try {
+        assigned = await getBucketsAssignedToUser(user.id);
+      } catch (assignErr) {
+        // Table may not exist yet — owned buckets still render; run `npm run db:migrate` to fix
+        console.error('getBucketsAssignedToUser failed:', assignErr);
+      }
+      buckets = [
+        ...owned.map(b => ({ ...b, is_owned: true, owner_username: user.username, permission: null })),
+        ...assigned, // already carries is_owned:false, owner_username, permission
+      ];
+    }
+
+    return NextResponse.json({ buckets, count: buckets.length });
   } catch (error) {
     console.error('Get buckets error:', error);
     return NextResponse.json(
@@ -59,7 +74,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { alias, bucket_name, region, root_folder, access_key_id, secret_access_key, session_token } = body;
+    const { alias, bucket_name, region, root_folder, access_key_id, secret_access_key, session_token, max_upload_size } = body;
 
     if (!alias || !bucket_name || !region) {
       return NextResponse.json(
@@ -67,6 +82,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Only admins may set a per-bucket upload limit; others get the app default (null).
+    const isAdmin = user.role === 'admin';
 
     const bucket = await createBucket({
       alias,
@@ -76,6 +94,7 @@ export async function POST(request: NextRequest) {
       access_key_id,
       secret_access_key,
       session_token,
+      max_upload_size: isAdmin ? (clampUploadSize(max_upload_size) ?? null) : null,
       user_id: user.id,
       username: user.username,
     });

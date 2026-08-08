@@ -297,7 +297,7 @@ export default function UserManagementPage() {
   };
 
   return (
-    <div className="min-h-screen skeu-bg">
+    <div className="min-h-screen skeu-bg app-content">
       <AppSidebar title="User Management" titleIcon={<Users className="h-5 w-5" />} />
       <main className="p-4 md:p-8">
         <Card className="w-full max-w-4xl mx-auto">

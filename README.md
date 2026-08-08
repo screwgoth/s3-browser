@@ -69,6 +69,20 @@ cp .env.example .env
 # 5. Start application
 npm run dev
 ```
+Or if you want to Build and run
+```bash
+npm run build
+pm2 start npm --name "s3-browser" -- run start
+```
+
+Or let `app.sh` handle the database and PM2 together:
+```bash
+./app.sh setup        # install + database + build + start (prod, port 3000)
+./app.sh start dev    # development mode on port 5000
+./app.sh status       # PM2 + database status
+./app.sh stop         # stop app and database
+./app.sh purge        # remove PM2 process, database data, .next, node_modules
+```
 
 Open [http://localhost:5000](http://localhost:5000)
 
@@ -136,6 +150,38 @@ Session tokens are required when using temporary credentials from:
 
 All three fields (Access Key, Secret Key, Session Token) must be filled in together for temporary credentials to work.
 
+### Per-Bucket Upload Size Limit
+
+Each bucket has a configurable maximum file size (default **10MB**). Only **admins** can change it via the bucket create/edit form ("Max Upload Size (MB)"). The limit is capped at 50MB to stay within the Next.js Server Action `bodySizeLimit`. It is enforced both client-side (UX) and server-side (authoritative) in `uploadObject`.
+
+### Malware Scanning (ClamAV)
+
+Uploads can be scanned for malware **before** they reach S3 using a ClamAV `clamd` daemon.
+
+- **Infected files are rejected** and never uploaded (audit action `file.upload.blocked`).
+- **Fail-open:** if the scanner is disabled or unreachable, the upload still proceeds, a warning is logged, an audit entry records `scan_status: unscanned`, and the file is flagged in the browser with an amber ⚠ "not scanned" indicator.
+
+Setup on the host (PM2/EC2 deploy):
+
+```bash
+sudo apt install clamav clamav-daemon
+sudo freshclam                     # update signature database
+sudo systemctl enable --now clamav-daemon
+```
+
+Then set in `.env`:
+
+```bash
+CLAMAV_ENABLED="true"
+# Debian/Ubuntu clamav-daemon uses a Unix socket by default:
+CLAMAV_SOCKET="/var/run/clamav/clamd.ctl"
+# ...or TCP if you configure clamd for it:
+# CLAMAV_HOST="127.0.0.1"
+# CLAMAV_PORT="3310"
+```
+
+> **Docker note:** the Alpine app image does not include ClamAV. Run a ClamAV sidecar container and point `CLAMAV_HOST`/`CLAMAV_PORT` (or a shared socket) at it. Leaving `CLAMAV_ENABLED` unset means all uploads are treated as unscanned (fail-open).
+
 ## Architecture
 
 All S3 operations run exclusively as **Next.js Server Actions** — no AWS SDK code runs in the browser. This eliminates:
@@ -155,7 +201,7 @@ Bucket configurations (names, credentials) are stored in **browser localStorage*
 
 ## Limitations
 
-- **File upload limit:** 100MB per file
+- **File upload limit:** configurable per bucket (default 10MB, max 50MB)
 - **Large file downloads:** Files are buffered in server memory before streaming to the client. Very large files (>500MB) may be slow or time out.
 - **No persistence:** Bucket configs are stored in localStorage — clearing browser data removes them.
 - **Authentication:** Basic username/password stored in memory (not production-grade auth).

@@ -6,50 +6,95 @@ body {
   font-family: 'Inter', sans-serif;
 }
 
+/*
+ * S3 Navigator — corporate theme.
+ * Brand palette sourced from avanse.com:
+ *   Primary teal   #198694  hsl(187 71% 34%)
+ *   Accent orange  #ec7426  hsl(24 84% 54%)
+ *   Highlight gold #ffc20e  hsl(45 100% 53%)
+ * Flat, clean surfaces — no skeuomorphism.
+ */
 @layer base {
   :root {
-    --background: 220 20% 92%;
-    --foreground: 210 25% 18%;
+    --background: 210 20% 98%;
+    --foreground: 200 25% 16%;
     --card: 0 0% 100%;
-    --card-foreground: 210 25% 18%;
+    --card-foreground: 200 25% 16%;
     --popover: 0 0% 100%;
-    --popover-foreground: 210 25% 18%;
-    --primary: 204 60% 45%;
+    --popover-foreground: 200 25% 16%;
+    --primary: 187 71% 34%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 14% 85%;
-    --secondary-foreground: 210 25% 18%;
-    --muted: 220 14% 88%;
-    --muted-foreground: 210 9% 45%;
-    --accent: 204 60% 38%;
+    --secondary: 200 20% 94%;
+    --secondary-foreground: 200 25% 20%;
+    --muted: 200 20% 95%;
+    --muted-foreground: 200 12% 42%;
+    --accent: 24 84% 54%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
-    --border: 220 15% 78%;
-    --input: 220 15% 88%;
-    --ring: 204 60% 45%;
-    --radius: 0.6rem;
+    --success: 145 63% 32%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 45%;
+    --warning-foreground: 0 0% 100%;
+    --border: 200 18% 88%;
+    --input: 200 18% 88%;
+    --ring: 187 71% 34%;
+    --radius: 0.5rem;
+
+    /* Brand accents for direct use */
+    --brand-teal: 187 71% 34%;
+    --brand-teal-dark: 185 84% 27%;
+    --brand-orange: 24 84% 54%;
+    --brand-gold: 45 100% 53%;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 200 25% 20%;
+    --sidebar-primary: 187 71% 34%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 200 20% 95%;
+    --sidebar-accent-foreground: 200 25% 16%;
+    --sidebar-border: 200 18% 88%;
+    --sidebar-ring: 187 71% 34%;
   }
 
   .dark {
-    --background: 210 18% 12%;
+    --background: 200 30% 9%;
     --foreground: 0 0% 95%;
-    --card: 210 18% 16%;
+    --card: 200 26% 13%;
     --card-foreground: 0 0% 95%;
-    --popover: 210 18% 16%;
+    --popover: 200 26% 13%;
     --popover-foreground: 0 0% 95%;
-    --primary: 204 60% 55%;
+    --primary: 187 60% 45%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 13% 22%;
+    --secondary: 200 18% 20%;
     --secondary-foreground: 0 0% 95%;
-    --muted: 220 13% 20%;
-    --muted-foreground: 210 9% 60%;
-    --accent: 195 53% 65%;
-    --accent-foreground: 210 18% 12%;
-    --destructive: 0 55% 40%;
+    --muted: 200 18% 18%;
+    --muted-foreground: 200 10% 62%;
+    --accent: 24 80% 56%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 98%;
-    --border: 220 13% 28%;
-    --input: 220 13% 24%;
-    --ring: 204 60% 55%;
+    --success: 145 55% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 90% 55%;
+    --warning-foreground: 0 0% 12%;
+    --border: 200 16% 26%;
+    --input: 200 16% 24%;
+    --ring: 187 60% 45%;
+
+    --brand-teal: 187 60% 45%;
+    --brand-teal-dark: 187 60% 38%;
+    --brand-orange: 24 80% 56%;
+    --brand-gold: 45 90% 55%;
+
+    --sidebar-background: 200 26% 13%;
+    --sidebar-foreground: 0 0% 92%;
+    --sidebar-primary: 187 60% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 200 18% 20%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 200 16% 26%;
+    --sidebar-ring: 187 60% 45%;
   }
 }
 
@@ -62,115 +107,105 @@ body {
   }
 }
 
-/* ── Skeuomorphism Design System ── */
+/*
+ * Corporate surface system.
+ * These class names are kept from the previous skeuomorphic theme so existing
+ * markup transforms automatically — but every rule below is now a flat,
+ * professional style.
+ */
 @layer components {
 
-  /* Page background — brushed linen texture feel */
+  /* Page background — clean, flat app canvas */
   .skeu-bg {
-    background-color: #dde3ec;
-    background-image:
-      linear-gradient(135deg, #e8edf5 25%, transparent 25%),
-      linear-gradient(225deg, #dde3ec 25%, transparent 25%),
-      linear-gradient(45deg,  #dde3ec 25%, transparent 25%),
-      linear-gradient(315deg, #e8edf5 25%, #dde3ec 25%);
-    background-size: 4px 4px;
+    background-color: hsl(var(--background));
   }
 
-  /* Card — raised, beveled look */
+  /* Card — flat panel with hairline border + soft elevation */
   .skeu-card,
   .skeu-card.border {
-    background: linear-gradient(160deg, #ffffff 0%, #f0f4fa 100%);
-    border: 1px solid #b8c4d8;
-    border-top-color: #d8e2f0;
-    border-left-color: #d8e2f0;
-    border-bottom-color: #8fa0bc;
-    border-right-color: #8fa0bc;
-    box-shadow:
-      0 1px 0 0 rgba(255,255,255,0.8) inset,
-      0 -1px 0 0 rgba(0,0,0,0.08) inset,
-      0 4px 12px rgba(0,0,0,0.12),
-      0 1px 3px rgba(0,0,0,0.08);
-    border-radius: 12px;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 1px 2px rgba(16, 40, 55, 0.04), 0 1px 3px rgba(16, 40, 55, 0.06);
+    border-radius: var(--radius);
   }
 
-  /* Header bar — brushed metal */
+  /* Page content offset for the fixed desktop rail. Width follows the
+     sidebar's collapsed state via the data attribute on <html>. */
+  .app-content {
+    transition: padding-left 0.3s ease;
+  }
+  @media (min-width: 768px) {
+    .app-content {
+      padding-left: 16rem;
+    }
+    html[data-sidebar-collapsed='true'] .app-content {
+      padding-left: 4rem;
+    }
+  }
+
+  /* Header bar — white app chrome with a brand top accent */
   .skeu-header {
-    background: linear-gradient(180deg, #e8eef8 0%, #d0daea 50%, #c8d2e6 100%);
-    border-bottom: 1px solid #a0aec0;
-    box-shadow:
-      0 1px 0 rgba(255,255,255,0.7) inset,
-      0 2px 6px rgba(0,0,0,0.12);
+    background: hsl(var(--card));
+    border-bottom: 1px solid hsl(var(--border));
+    box-shadow: inset 0 3px 0 hsl(var(--brand-teal)), 0 1px 2px rgba(16, 40, 55, 0.05);
   }
 
-  /* Button — tactile, pressable */
+  /* Button — solid brand fill, flat */
   .skeu-btn {
-    background: linear-gradient(180deg, #5b9bd5 0%, #3b7ec8 50%, #2c6db8 100%);
-    border: 1px solid #2059a0;
-    border-bottom: 2px solid #1a4a8a;
-    color: white;
-    text-shadow: 0 1px 1px rgba(0,0,0,0.3);
-    box-shadow:
-      0 1px 0 rgba(255,255,255,0.25) inset,
-      0 3px 6px rgba(0,0,0,0.2);
-    border-radius: 8px;
-    transition: all 0.1s ease;
+    background: hsl(var(--brand-teal));
+    border: 1px solid hsl(var(--brand-teal-dark));
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 1px 2px rgba(16, 40, 55, 0.12);
+    border-radius: var(--radius);
+    transition: background-color 0.15s ease;
   }
   .skeu-btn:hover {
-    background: linear-gradient(180deg, #6baae0 0%, #4b8ed8 50%, #3c7dc8 100%);
+    background: hsl(var(--brand-teal-dark));
   }
   .skeu-btn:active {
-    transform: translateY(1px);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    background: hsl(var(--brand-teal-dark));
   }
 
-  /* Input fields — inset/recessed look */
+  /* Input fields — flat, bordered */
   .skeu-input input,
   .skeu-input {
-    background: linear-gradient(180deg, #e8edf5 0%, #f5f7fb 100%);
-    border: 1px solid #9ab0cc;
-    border-top-color: #7090b0;
-    box-shadow:
-      0 2px 4px rgba(0,0,0,0.1) inset,
-      0 1px 0 rgba(255,255,255,0.6);
-    border-radius: 6px;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--input));
+    box-shadow: none;
+    border-radius: calc(var(--radius) - 2px);
   }
 
-  /* Table — ledger paper feel */
+  /* Table — clean data grid */
   .skeu-table thead tr {
-    background: linear-gradient(180deg, #dde5f2 0%, #ccd5e8 100%);
-    border-bottom: 2px solid #a0b0cc;
+    background: hsl(var(--muted));
+    border-bottom: 1px solid hsl(var(--border));
   }
-  .skeu-table tbody tr:nth-child(even) {
-    background: rgba(255,255,255,0.5);
+  .skeu-table thead th {
+    color: hsl(var(--muted-foreground));
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-size: 0.72rem;
   }
-  .skeu-table tbody tr:nth-child(odd) {
-    background: rgba(210,220,235,0.3);
+  .skeu-table tbody tr {
+    border-bottom: 1px solid hsl(var(--border));
   }
   .skeu-table tbody tr:hover {
-    background: rgba(180,200,230,0.4);
+    background: hsl(var(--secondary));
   }
 
-  /* Login card — thick, embossed */
+  /* Login card — flat, moderately elevated */
   .skeu-login-card {
-    background: linear-gradient(160deg, #ffffff 0%, #edf2fa 100%);
-    border: 1px solid #b0c4dc;
-    border-top-color: #e0eaf8;
-    border-left-color: #e0eaf8;
-    border-bottom-color: #7898bc;
-    border-right-color: #7898bc;
-    box-shadow:
-      0 2px 0 rgba(255,255,255,0.9) inset,
-      0 -1px 0 rgba(0,0,0,0.08) inset,
-      0 8px 24px rgba(0,0,0,0.18),
-      0 2px 6px rgba(0,0,0,0.1);
-    border-radius: 16px;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 10px 30px rgba(16, 40, 55, 0.10), 0 2px 6px rgba(16, 40, 55, 0.06);
+    border-radius: calc(var(--radius) + 4px);
   }
 
-  /* Badge pills — embossed */
+  /* Badge pills — flat */
   .skeu-badge {
-    box-shadow:
-      0 1px 0 rgba(255,255,255,0.6) inset,
-      0 1px 3px rgba(0,0,0,0.15);
-    border: 1px solid rgba(0,0,0,0.1);
+    box-shadow: none;
+    border: 1px solid transparent;
+    font-weight: 600;
   }
 }

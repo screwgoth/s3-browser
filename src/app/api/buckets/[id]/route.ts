@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateSession } from '@/lib/auth';
 import { getBucketById, updateBucket, deleteBucket } from '@/lib/buckets';
+import { clampUploadSize } from '@/lib/upload-limits';
 import { cookies } from 'next/headers';
 
 // GET /api/buckets/:id - Get a single bucket
@@ -70,7 +71,14 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { alias, bucket_name, region, root_folder, access_key_id, secret_access_key, session_token, is_active } = body;
+    const { alias, bucket_name, region, root_folder, access_key_id, secret_access_key, session_token, is_active, max_upload_size } = body;
+
+    // Only admins may change a bucket's upload limit; ignore the field otherwise.
+    const isAdmin = user.role === 'admin';
+    const maxUploadSize =
+      isAdmin && max_upload_size !== undefined
+        ? (clampUploadSize(max_upload_size) ?? null)
+        : undefined;
 
     const bucket = await updateBucket(bucketId, user.id, {
       alias,
@@ -81,8 +89,9 @@ export async function PATCH(
       secret_access_key,
       session_token,
       is_active,
+      max_upload_size: maxUploadSize,
       username: user.username,
-    }, user.role === 'admin');
+    }, isAdmin);
 
     if (!bucket) {
       return NextResponse.json(

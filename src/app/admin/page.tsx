@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2, Settings } from 'lucide-react';
 import { LogoUpload } from '@/components/logo-upload';
+import { BrandingSettings } from '@/components/branding-settings';
 import { AppSidebar } from '@/components/app-sidebar';
 
 export default function AdminSettingsPage() {
@@ -24,11 +25,12 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen skeu-bg">
+    <div className="min-h-screen skeu-bg app-content">
       <AppSidebar title="Admin Settings" titleIcon={<Settings className="h-5 w-5" />} />
 
       <main className="p-6 md:p-10 max-w-3xl mx-auto space-y-8">
         <LogoUpload />
+        <BrandingSettings />
       </main>
     </div>
   );
